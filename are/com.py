@@ -19,13 +19,17 @@ def insert(tablename,data):
     conn.close()
     return inserted_id
 
-def insertneuron(nname):
-    #inserts one neuron with name nname
+def insertneuron(d):
+    #inserts one neuron with values from dictionary d
     # TODO add parameters. 
     conn=connect()
     cur = conn.cursor()
-    statement = """CALL ingest_data('{}', 'Zhang4', 'http://zhang.com',  'monkey', 'testexpcond3','adult' , 'A.B' , 'C.D','04-15-2019', '10-15-2019',0.88,'dry', 'DAT','in vivo', 'coronal', 0.75, 'green fluorescent protein',
- 'tststrain',  cast(1 as boolean), 'not reported' , 'D' , 'F', 1.3, 2.5,3.6,4.8, 'AA','NN', 2222222,'doi.org/1111', null)""".format(nname)
+    statement = """CALL ingest_data('{}', '{}', '{}',  '{}', '{}','{}' , '{}' , '{}','{}', '{}',{},'{}', '{}','{}', '{}', {}, '{}',
+        '{}',  cast({} as boolean), '{}' , '{}' , '{}', {}, {},{},{}, '{}', {},'{}', {}, {},'{}',  null)""".format(
+     d['name'],d['archive'],d['archiveurl'],d['species'],d['expcond'],d['age'],d['region'],d['celltype'],d['depodate'],d['uploaddate'],
+     str(d['magnification']),d['objective'],d['orgformat'],d['protocol'],d['slicedir'],str(d['slicethickness']),d['staining'],d['strain'],
+     str(d['has_soma']),d['shrinkage'],d['agescale'],d['gender'],str(d['max_age']),str(d['min_age']),str(d['min_weight']),
+     str(d['max_weight']),d['note'],str(d['pmid']),d['doi'],str(d['sum_mes_id']),str(d['shrinkval_id']),d['url_ref'])
     cur.execute(statement)
     result = cur.fetchone()
     neuron_id = result[0]
