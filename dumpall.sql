@@ -271,10 +271,75 @@ CREATE TYPE public.slicing_direction_type AS ENUM (
 ALTER TYPE public.slicing_direction_type OWNER TO postgres;
 
 --
--- Name: ingest_data(character varying, character varying, character varying, character varying, character varying, public.age_type, character varying, character varying, date, date, double precision, public.objective_type, character varying, public.protocol_type, public.slicing_direction_type, double precision, character varying, character varying, boolean, public.shrinkage_type, public.age_scale_type, public.gender_type, double precision, double precision, double precision, double precision, text, integer, character varying, integer, integer, character varying, integer); Type: PROCEDURE; Schema: public; Owner: nmo
+-- Name: ingest_celltype(text[], character varying); Type: PROCEDURE; Schema: public; Owner: nmo
 --
 
-CREATE PROCEDURE public.ingest_data(neuron_name character varying, archive_name character varying, archive_url character varying, a_species character varying, a_expcond character varying, a_age public.age_type, a_region character varying, a_celltype character varying, a_depositiondate date, a_uploaddate date, magnification double precision, objective public.objective_type, a_originalformat character varying, protocol public.protocol_type, a_slicing_direction public.slicing_direction_type, slicingthickness double precision, a_staining character varying, a_strain character varying, has_soma boolean, shrinkage public.shrinkage_type, age_scale public.age_scale_type, gender public.gender_type, max_age double precision, min_age double precision, min_weight double precision, max_weight double precision, note text, a_pmid integer, a_doi character varying, a_summary_meas_id integer, a_shrinkagevalue_id integer, a_url_reference character varying, INOUT a_neuron_id integer)
+CREATE PROCEDURE public.ingest_celltype(celltype_names text[], a_celltype_path character varying)
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+DECLARE
+        celltypes character varying ARRAY;
+        item character varying;
+        nAncestors int;
+        ndbancestors int;
+        a_celltype_id int;
+        arrSize int;
+        counter int;
+        ancPath character varying;
+BEGIN
+--      inserts a celltype and checks if it and its parents exist. If not parents exist, they are created. 
+--      If not celltype exists, it is created. 
+--      Full names are taken from array, matching the place in the path. 
+--      A check is made if path size is matching the array with full names
+	
+        celltypes = regexp_split_to_array(a_celltype_path, '\.');
+        nAncestors = array_length(celltypes, 1);
+        arrSize = array_length(celltype_names, 1);
+        IF nAncestors != arrSize THEN
+                RAISE EXCEPTION 'Size of array and items indicated by path not matching'
+                        USING hint = 'Please check input variables';
+        END IF;
+        
+        select count(*) into ndbancestors from celltype  where text2ltree(a_celltype_path) <@ path;
+        -- check if ancestors in array equals size of ancestors in path
+        -- if not, missing ancestors will be inserted as needed.
+        -- if so, nothing needs to be done.
+        IF ndbancestors != nAncestors THEN
+                -- loop over all ancestors and the item itself in path to check if they are there.
+                ancPath = '';
+                for counter in 1..nAncestors
+                LOOP   
+                       IF counter = 1 THEN
+                        ancPath = celltypes[counter];
+                       ELSE
+                        ancPath = ancPath || '.' || celltypes[counter];
+                       END IF;
+                       Select celltype.id into a_celltype_id from celltype where celltype.path ~ lquery(ancPath);
+	               IF a_celltype_id isnull THEN
+	                       insert into celltype(name,path) values (celltype_names[counter],text2ltree(ancPath));
+	               END IF;
+                        
+                END LOOP;
+        
+	END IF;
+	
+	
+	
+
+COMMIT;
+END;
+ END;
+$$;
+
+
+ALTER PROCEDURE public.ingest_celltype(celltype_names text[], a_celltype_path character varying) OWNER TO nmo;
+
+--
+-- Name: ingest_data(character varying, character varying, character varying, character varying, character varying, public.age_type, integer, integer, date, date, double precision, public.objective_type, character varying, public.protocol_type, public.slicing_direction_type, double precision, character varying, character varying, boolean, public.shrinkage_type, public.age_scale_type, public.gender_type, double precision, double precision, double precision, double precision, text, integer, character varying, integer, integer, character varying, integer); Type: PROCEDURE; Schema: public; Owner: nmo
+--
+
+CREATE PROCEDURE public.ingest_data(neuron_name character varying, archive_name character varying, archive_url character varying, a_species character varying, a_expcond character varying, a_age public.age_type, a_region_id integer, a_celltype_id integer, a_depositiondate date, a_uploaddate date, magnification double precision, objective public.objective_type, a_originalformat character varying, protocol public.protocol_type, a_slicing_direction public.slicing_direction_type, slicingthickness double precision, a_staining character varying, a_strain character varying, has_soma boolean, shrinkage public.shrinkage_type, age_scale public.age_scale_type, gender public.gender_type, max_age double precision, min_age double precision, min_weight double precision, max_weight double precision, note text, a_pmid integer, a_doi character varying, a_summary_meas_id integer, a_shrinkagevalue_id integer, a_url_reference character varying, INOUT a_neuron_id integer)
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -283,8 +348,6 @@ BEGIN
 	a_expcond_id int;
 	a_originalformat_id int;
 	a_publication_id int;
-	a_region_id int;
-	a_celltype_id int;
 	a_staining_id int;
 	a_strain_id int;
 	a_species_id int;
@@ -333,17 +396,17 @@ BEGIN
 		Select publication.id into a_publication_id from publication where publication.pmid = a_pmid;
 	END IF;
 	
-	Select region.id into a_region_id from region where region.path ~ lquery(a_region);
-	IF a_region_id isnull THEN
-		RAISE EXCEPTION 'Nonexistent region path --> %', a_region
-                        USING HINT = 'Please check region path';
-	END IF;
+--	Select region.id into a_region_id from region where region.path ~ lquery(a_region);
+--	IF a_region_id isnull THEN
+--		RAISE EXCEPTION 'Nonexistent region path --> %', a_region
+ --                       USING HINT = 'Please check region path';
+--	END IF;
 	
-	Select celltype.id into a_celltype_id from celltype where celltype.path ~ lquery(a_celltype);
-	IF a_celltype_id isnull THEN
-		RAISE EXCEPTION 'Nonexistent celltype path --> %', a_celltype
-                        USING HINT = 'Please check celltype path';
-	END IF;
+--	Select celltype.id into a_celltype_id from celltype where celltype.path ~ lquery(a_celltype);
+--	IF a_celltype_id isnull THEN
+--		RAISE EXCEPTION 'Nonexistent celltype path --> %', a_celltype
+ --                       USING HINT = 'Please check celltype path';
+--	END IF;
 	
 	
 	INSERT INTO neuron(name,archive_id,age,region_id,celltype_id,depositiondate,uploaddate,publication_id,expcond_id,magnification,summary_meas_id,objective,originalformat_id,protocol,slicing_direction,slicingthickness,staining_id,shrinkage,shrinkagevalue_id,age_scale,gender,max_age,min_age,min_weight,max_weight,note,url_reference) 
@@ -357,7 +420,72 @@ END;
 $$;
 
 
-ALTER PROCEDURE public.ingest_data(neuron_name character varying, archive_name character varying, archive_url character varying, a_species character varying, a_expcond character varying, a_age public.age_type, a_region character varying, a_celltype character varying, a_depositiondate date, a_uploaddate date, magnification double precision, objective public.objective_type, a_originalformat character varying, protocol public.protocol_type, a_slicing_direction public.slicing_direction_type, slicingthickness double precision, a_staining character varying, a_strain character varying, has_soma boolean, shrinkage public.shrinkage_type, age_scale public.age_scale_type, gender public.gender_type, max_age double precision, min_age double precision, min_weight double precision, max_weight double precision, note text, a_pmid integer, a_doi character varying, a_summary_meas_id integer, a_shrinkagevalue_id integer, a_url_reference character varying, INOUT a_neuron_id integer) OWNER TO nmo;
+ALTER PROCEDURE public.ingest_data(neuron_name character varying, archive_name character varying, archive_url character varying, a_species character varying, a_expcond character varying, a_age public.age_type, a_region_id integer, a_celltype_id integer, a_depositiondate date, a_uploaddate date, magnification double precision, objective public.objective_type, a_originalformat character varying, protocol public.protocol_type, a_slicing_direction public.slicing_direction_type, slicingthickness double precision, a_staining character varying, a_strain character varying, has_soma boolean, shrinkage public.shrinkage_type, age_scale public.age_scale_type, gender public.gender_type, max_age double precision, min_age double precision, min_weight double precision, max_weight double precision, note text, a_pmid integer, a_doi character varying, a_summary_meas_id integer, a_shrinkagevalue_id integer, a_url_reference character varying, INOUT a_neuron_id integer) OWNER TO nmo;
+
+--
+-- Name: ingest_region(text[], character varying); Type: PROCEDURE; Schema: public; Owner: nmo
+--
+
+CREATE PROCEDURE public.ingest_region(reg_names text[], a_region_path character varying)
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+DECLARE
+        regions character varying ARRAY;
+        item character varying;
+        nAncestors int;
+        ndbancestors int;
+        a_region_id int;
+        arrSize int;
+        counter int;
+        ancPath character varying;
+BEGIN
+--      inserts a region and checks if it and its parents exist. If not parents exist, they are created. 
+--      If not region exists, it is created. 
+--      Full names are taken from array, matching the place in the path. 
+--      A check is made if path size is matching the array with full names
+	
+        regions = regexp_split_to_array(a_region_path, '\.');
+        nAncestors = array_length(regions, 1);
+        arrSize = array_length(reg_names, 1);
+        IF nAncestors != arrSize THEN
+                RAISE EXCEPTION 'Size of array and items indicated by path not matching'
+                        USING hint = 'Please check input variables';
+        END IF;
+        
+        select count(*) into ndbancestors from region  where text2ltree(a_region_path) <@ path;
+        -- check if ancestors in array equals size of ancestors in path
+        -- if not, missing ancestors will be inserted as needed.
+        -- if so, nothing needs to be done.
+        IF ndbancestors != nAncestors THEN
+                -- loop over all ancestors and the item itself in path to check if they are there.
+                ancPath = '';
+                for counter in 1..nAncestors
+                LOOP   
+                       IF counter = 1 THEN
+                        ancPath = regions[counter];
+                       ELSE
+                        ancPath = ancPath || '.' || regions[counter];
+                       END IF;
+                       Select region.id into a_region_id from region where region.path ~ lquery(ancPath);
+	               IF a_region_id isnull THEN
+	                       insert into region(name,path) values (reg_names[counter],text2ltree(ancPath));
+	               END IF;
+                        
+                END LOOP;
+        
+	END IF;
+	
+	
+	
+
+COMMIT;
+END;
+ END;
+$$;
+
+
+ALTER PROCEDURE public.ingest_region(reg_names text[], a_region_path character varying) OWNER TO nmo;
 
 SET default_tablespace = '';
 
@@ -402,6 +530,20 @@ CREATE TABLE public.celltype (
 
 
 ALTER TABLE public.celltype OWNER TO nmo;
+
+--
+-- Name: celltype_id_seq; Type: SEQUENCE; Schema: public; Owner: nmo
+--
+
+ALTER TABLE public.celltype ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.celltype_id_seq
+    START WITH 3
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
 
 --
 -- Name: expcond; Type: TABLE; Schema: public; Owner: nmo
@@ -674,6 +816,20 @@ CREATE TABLE public.region (
 ALTER TABLE public.region OWNER TO nmo;
 
 --
+-- Name: region_id_seq; Type: SEQUENCE; Schema: public; Owner: nmo
+--
+
+ALTER TABLE public.region ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.region_id_seq
+    START WITH 3
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: shrinkagevalue; Type: TABLE; Schema: public; Owner: nmo
 --
 
@@ -788,6 +944,7 @@ ALTER TABLE public.strain ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 --
 
 COPY public.archive (id, name, url) FROM stdin;
+15	testarchive	http://test.com
 \.
 
 
@@ -797,6 +954,14 @@ COPY public.archive (id, name, url) FROM stdin;
 
 COPY public.celltype (id, name, path) FROM stdin;
 1	testreg	C.D
+3	'testG'	G
+4	'testH'	G.H
+5	'testI'	G.H.I
+6	'testI'	G.H.J
+28	'test1'	test1
+29	'Not ported'	test1.Not_ported
+30	'Not  reported'	test1.Not_ported.Not__reported
+31	'test4'	test1.Not_ported.Not__reported.test4
 \.
 
 
@@ -805,6 +970,7 @@ COPY public.celltype (id, name, path) FROM stdin;
 --
 
 COPY public.expcond (id, name) FROM stdin;
+31	gruesome
 \.
 
 
@@ -821,6 +987,9 @@ COPY public.ingestion (id, neuron_id, ingestion_date, status, warnings, errors, 
 --
 
 COPY public.measurements (id, soma_surface, n_stems, n_bifs, n_branch, width, height, depth, diameter, length, surface, volume, eucdistance, pathdistance, branch_order, contraction, fragmentation, partition_assymetry, pk_classic, bif_ampl_local, bif_ampl_remote, fractal_dim) FROM stdin;
+4	103	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+5	103	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+6	103	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
 \.
 
 
@@ -829,6 +998,7 @@ COPY public.measurements (id, soma_surface, n_stems, n_bifs, n_branch, width, he
 --
 
 COPY public.neuron (id, name, archive_id, age, region_id, celltype_id, depositiondate, uploaddate, publication_id, expcond_id, magnification, summary_meas_id, objective, originalformat_id, slicing_direction, slicingthickness, has_soma, shrinkage, shrinkagevalue_id, age_scale, gender, max_age, min_age, min_weight, max_weight, note, url_reference, staining_id, protocol, oldid) FROM stdin;
+73	testname	15	adult	1	1	2020-01-01	2020-02-02	25	31	1	5	dry	10	coronal	0.5	\N	not reported	5	D	F	5.2	4.1	6.4	3.5	nice experiment	http://testing.com	10	in vivo	\N
 \.
 
 
@@ -855,6 +1025,7 @@ COPY public.neuron_structure (id, neuron_id, measurements_id, completeness, doma
 --
 
 COPY public.originalformat (id, name, format_type) FROM stdin;
+10	DAT	\N
 \.
 
 
@@ -863,6 +1034,7 @@ COPY public.originalformat (id, name, format_type) FROM stdin;
 --
 
 COPY public.publication (id, pmid, doi, year, journal, title, first_author, last_author, species_id, ocdate, specific_details, related_page, data_status, literature_id, abstract, url) FROM stdin;
+25	1111111	doi.org/test/11111	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
 \.
 
 
@@ -872,6 +1044,15 @@ COPY public.publication (id, pmid, doi, year, journal, title, first_author, last
 
 COPY public.region (id, name, path) FROM stdin;
 1	testregion	A.B
+2	test2	A.B.C
+3	test3	A
+4	'testE'	E
+5	'testF'	EF
+10	'testG'	G
+11	'testH'	G.H
+13	'testI'	G.H.I
+14	'testI'	G.H.J
+47	'test1'	test1
 \.
 
 
@@ -880,6 +1061,9 @@ COPY public.region (id, name, path) FROM stdin;
 --
 
 COPY public.shrinkagevalue (id, reported_val, reported_xy, reported_z, corrected_val, corrected_xy, corrected_z) FROM stdin;
+4	0.75	\N	\N	\N	\N	\N
+5	0.75	\N	\N	\N	\N	\N
+6	0.75	\N	\N	\N	\N	\N
 \.
 
 
@@ -888,6 +1072,7 @@ COPY public.shrinkagevalue (id, reported_val, reported_xy, reported_z, corrected
 --
 
 COPY public.species (id, name) FROM stdin;
+11	rat
 \.
 
 
@@ -896,6 +1081,7 @@ COPY public.species (id, name) FROM stdin;
 --
 
 COPY public.staining (id, name) FROM stdin;
+10	Fiddlers Green
 \.
 
 
@@ -904,6 +1090,7 @@ COPY public.staining (id, name) FROM stdin;
 --
 
 COPY public.strain (id, name, species_id) FROM stdin;
+10	Wistar	11
 \.
 
 
@@ -911,28 +1098,35 @@ COPY public.strain (id, name, species_id) FROM stdin;
 -- Name: archive_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.archive_id_seq', 14, true);
+SELECT pg_catalog.setval('public.archive_id_seq', 15, true);
+
+
+--
+-- Name: celltype_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
+--
+
+SELECT pg_catalog.setval('public.celltype_id_seq', 31, true);
 
 
 --
 -- Name: expcond_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.expcond_id_seq', 30, true);
+SELECT pg_catalog.setval('public.expcond_id_seq', 31, true);
 
 
 --
 -- Name: measurements_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.measurements_id_seq', 3, true);
+SELECT pg_catalog.setval('public.measurements_id_seq', 6, true);
 
 
 --
 -- Name: neuron_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.neuron_id_seq', 72, true);
+SELECT pg_catalog.setval('public.neuron_id_seq', 74, true);
 
 
 --
@@ -946,42 +1140,49 @@ SELECT pg_catalog.setval('public.neuron_segment_id_seq', 1, false);
 -- Name: originalformat_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.originalformat_id_seq', 9, true);
+SELECT pg_catalog.setval('public.originalformat_id_seq', 10, true);
 
 
 --
 -- Name: publication_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.publication_id_seq', 24, true);
+SELECT pg_catalog.setval('public.publication_id_seq', 25, true);
+
+
+--
+-- Name: region_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
+--
+
+SELECT pg_catalog.setval('public.region_id_seq', 47, true);
 
 
 --
 -- Name: shrinkagevalue_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.shrinkagevalue_id_seq', 3, true);
+SELECT pg_catalog.setval('public.shrinkagevalue_id_seq', 6, true);
 
 
 --
 -- Name: species_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.species_id_seq', 10, true);
+SELECT pg_catalog.setval('public.species_id_seq', 11, true);
 
 
 --
 -- Name: staining_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.staining_id_seq', 9, true);
+SELECT pg_catalog.setval('public.staining_id_seq', 10, true);
 
 
 --
 -- Name: strain_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.strain_id_seq', 9, true);
+SELECT pg_catalog.setval('public.strain_id_seq', 10, true);
 
 
 --
@@ -1110,6 +1311,14 @@ ALTER TABLE ONLY public.publication
 
 ALTER TABLE ONLY public.publication
     ADD CONSTRAINT publication_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: region region_ix1; Type: CONSTRAINT; Schema: public; Owner: nmo
+--
+
+ALTER TABLE ONLY public.region
+    ADD CONSTRAINT region_ix1 UNIQUE (path);
 
 
 --
