@@ -1,5 +1,9 @@
 import psycopg2
 
+def cleanstr(astring):
+    astring = astring.replace(' ','_')
+    return "".join([c for c in astring if c.isalpha() or c.isdigit() or c == '_']).rstrip()
+
 def connect():
     conn = psycopg2.connect(host="localhost",database="nmo", user="nmo", password="100%db")
     conn.autocommit = True
@@ -35,3 +39,96 @@ def insertneuron(d):
     neuron_id = result[0]
     conn.close()
     return neuron_id
+
+def ingest_region(adict):
+    # Checks dict for region fields
+    # Wraps fields into array string for postgres stored procedure
+    conn=connect()
+    cur = conn.cursor()
+    
+    proceed = True
+    path2 = ''
+
+    reg1 = adict.get('region1','')
+    if reg1 == 'Not reported' or reg1 == '':
+        raise Exception('Region 1 must have value')
+    else:
+        pgarr = "'{{''{}''".format(reg1)
+        path = cleanstr(reg1)
+    reg2 = adict.get('region2','')
+    if reg2 == 'Not reported' or reg2 == '':
+        proceed = False
+    else:
+        pgarr += ",''{}''".format(reg2)
+        path += '.' + cleanstr(reg2)
+    reg3 = adict.get('region3','')
+    if reg3 == 'Not reported' or reg3 == '' and proceed:
+        proceed = False
+    elif proceed:
+        path += '.' + cleanstr(reg3)
+        pgarr += ",''{}''".format(reg3)
+    reg3B = adict.get('region3B','')
+    if reg3B == 'Not reported' or reg3B == '' and proceed:
+        pass        
+    elif proceed:
+        pgarr += ",''{}''".format(reg3B)
+        path += '.' + cleanstr(reg3B)
+    pgarr += "}'"
+    cur.execute("CALL ingest_region({},'{}')".format(pgarr,path))
+    cur.execute("SELECT id from region where path = '{}';".format(path))
+    theid = cur.fetchone()
+    conn.close()
+    return theid[0]
+    # Strips invalid characters from path elements string.
+    # Concatenates path elements into ltree path
+    # Calls stored procedure to ingest region at lowest level if needed
+    # Regions at level 3A,B, C are ingested at same level in tree by calling procedure for each 
+
+
+def ingest_celltype(adict):
+    # Checks dict for celltype fields
+    # Wraps fields into array string for postgres stored procedure
+    conn=connect()
+    cur = conn.cursor()
+    
+    proceed = True
+
+    reg1 = adict.get('class1','')
+    if reg1 == 'Not reported' or reg1 == '':
+        raise Exception('class 1 must have value')
+    else:
+        pgarr = "'{{''{}''".format(reg1)
+        path = cleanstr(reg1)
+    reg2 = adict.get('class2','')
+    if reg2 == 'Not reported' or reg2 == '':
+        proceed = False
+    else:
+        pgarr += ",''{}''".format(reg2)
+        path += '.' + cleanstr(reg2)
+    reg3 = adict.get('class3','')
+    if reg3 == 'Not reported'  or reg3 == '' and proceed:
+        proceed = False
+    elif proceed:
+        path += '.' + cleanstr(reg3)
+        pgarr += ",''{}''".format(reg3)
+    reg3B = adict.get('class3B','')
+    if reg3B == 'Not reported'  or reg3B == '' and proceed:
+        proceed = False
+    elif proceed:
+        path += '.' + cleanstr(reg3B)
+        pgarr += ",''{}''".format(reg3B)
+    reg3C = adict.get('class3C','')
+    if reg3C == 'Not reported' or reg3C == '' and proceed:
+        pass        
+    elif proceed:
+        pgarr += ",''{}''".format(reg3C)
+        path += '.' + cleanstr(reg3C)
+    pgarr += "}'"
+    cur.execute("CALL ingest_celltype({},'{}')".format(pgarr,path))
+    cur.execute("SELECT id from celltype where path = '{}';".format(path))
+    theid = cur.fetchone()
+
+    conn.close()
+
+    return theid[0]
+
