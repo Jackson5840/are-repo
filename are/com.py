@@ -4,8 +4,14 @@ def cleanstr(astring):
     astring = astring.replace(' ','_')
     return "".join([c for c in astring if c.isalpha() or c.isdigit() or c == '_']).rstrip()
 
+def cleanerr(astring):
+    return "".join([c for c in astring if c.isalpha() or c.isdigit() or c == '_' or c == ' ']).rstrip()
+
+def cleanval(astring):
+    return astring.replace(',','')
+
 def connect():
-    conn = psycopg2.connect(host="localhost",database="nmo", user="nmo", password="100%db")
+    conn = psycopg2.connect(host="localhost",database="nmo", user="nmo", password="100neuralDB")
     conn.autocommit = True
     return conn
 
@@ -23,24 +29,33 @@ def insert(tablename,data):
     conn.close()
     return inserted_id
 
-def insertneuron(d):
+def isindb(tablename, column, value):
+    # check if value in table of specified column is in db
+    conn=connect()
+    cur = conn.cursor()
+    statement = "SELECT {} FROM {} where {} = '{}'".format(column,tablename,column,value)
+    cur.execute(statement)
+    result = cur.fetchone()
+    return result is not None
+
+def ingestneuron(d):
     #inserts one neuron with values from dictionary d
     # TODO add parameters. 
     conn=connect()
     cur = conn.cursor()
     statement = """CALL ingest_data('{}', '{}', '{}',  '{}', '{}','{}' , '{}' , '{}','{}', '{}',{},'{}', '{}','{}', '{}', {}, '{}',
         '{}',  cast({} as boolean), '{}' , '{}' , '{}', {}, {},{},{}, '{}', {},'{}', {}, {},'{}',  null)""".format(
-     d['name'],d['archive'],d['archiveurl'],d['species'],d['expcond'],d['age'],d['region'],d['celltype'],d['depodate'],d['uploaddate'],
-     str(d['magnification']),d['objective'],d['orgformat'],d['protocol'],d['slicedir'],str(d['slicethickness']),d['staining'],d['strain'],
-     str(d['has_soma']),d['shrinkage'],d['agescale'],d['gender'],str(d['max_age']),str(d['min_age']),str(d['min_weight']),
-     str(d['max_weight']),d['note'],str(d['pmid']),d['doi'],str(d['sum_mes_id']),str(d['shrinkval_id']),d['url_ref'])
+     d['neuron_name'],d['archive'],d['URL_reference'],d['species'],d['expercond'],d['age_classification'],d['region'],d['celltype'],d['deposition_date'],d['uploaddate'],
+     str(d['magnification']),d['objective'],d['format'],d['protocol'],d['slice_direction'],str(d['thickness']),d['stain'],d['strain'],
+     str(d['has_soma']),d['shrinkage_reported'],d['age_scale'],d['gender'],str(d['max_age']),str(d['min_age']),str(d['min_weight']),
+     str(d['max_weight']),d['note'],str(d['pmid']),d['doi'],str(d['sum_mes_id']),str(d['shrinkval_id']),d['URL_reference'])
     cur.execute(statement)
     result = cur.fetchone()
     neuron_id = result[0]
     conn.close()
     return neuron_id
 
-def ingest_region(adict):
+def ingestregion(adict):
     # Checks dict for region fields
     # Wraps fields into array string for postgres stored procedure
     conn=connect()
@@ -71,7 +86,7 @@ def ingest_region(adict):
     if reg3B == 'Not reported' or reg3B == '' and proceed:
         pass        
     elif proceed:
-        pgarr += ",''{}''".format(reg3B)
+        pgarr += ",''{}''".format(cleanval(reg3B))
         path += '.' + cleanstr(reg3B)
     pgarr += "}'"
     cur.execute("CALL ingest_region({},'{}')".format(pgarr,path))
@@ -85,7 +100,7 @@ def ingest_region(adict):
     # Regions at level 3A,B, C are ingested at same level in tree by calling procedure for each 
 
 
-def ingest_celltype(adict):
+def ingestcelltype(adict):
     # Checks dict for celltype fields
     # Wraps fields into array string for postgres stored procedure
     conn=connect()
@@ -132,3 +147,35 @@ def ingest_celltype(adict):
 
     return theid[0]
 
+def getreadyneurons(archive):
+    # get array of ready neuron names
+    conn = connect()
+    cur = conn.cursor()
+
+    statement = "SELECT neuron_name FROM ingestion WHERE (status = 2 OR status = 5) AND archive = '{}'".format(archive)
+    cur.execute(statement)
+    result = cur.fetchall()
+    res = [item[0] for item in result]
+    conn.close()
+    return res
+
+def getneuronarchive(neuron_name):
+    # get array of ready neuron names
+    conn = connect()
+    cur = conn.cursor()
+
+    statement = "SELECT archive FROM ingestion WHERE neuron_name = '{}'".format(neuron_name)
+    cur.execute(statement)
+    result = cur.fetchone()
+    res = result[0]
+    conn.close()
+    return res
+
+def setneuronerror(neuron_name,message):
+    # get array of ready neuron names
+    conn = connect()
+    cur = conn.cursor()
+
+    statement = "UPDATE ingestion SET status=5, errors = '{}' WHERE neuron_name = '{}'".format(cleanerr(message),neuron_name)
+    cur.execute(statement)
+    conn.close()

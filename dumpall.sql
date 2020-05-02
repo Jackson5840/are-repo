@@ -228,10 +228,10 @@ ALTER TYPE public.protocol_type OWNER TO postgres;
 -- Name: shrinkage_type; Type: TYPE; Schema: public; Owner: postgres
 --
 
-CREATE TYPE public.shrinkage_type AS ENUM (
+ALTER TYPE public.shrinkage_type AS ENUM (
     'reported and corrected',
     'reported and not corrected',
-    'not reported',
+    'Not reported',
     'not applicable'
 );
 
