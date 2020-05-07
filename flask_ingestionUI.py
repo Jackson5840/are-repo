@@ -15,7 +15,8 @@ from are import ingest
 
 app = Flask(__name__)
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://nmo:100neuralDB@localhost:5432/nmo"
+#app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://nmo:100neuralDB@localhost:5432/nmo"
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:root@localhost:5432/nmodev"
 db = SQLAlchemy(app)
 
 

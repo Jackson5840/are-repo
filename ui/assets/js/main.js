@@ -4,6 +4,8 @@ $(document).ready(function() {
 });
 
 function retrieveIngestionData() {
+    $(".loading").show();
+    
 	 $.ajax({
 		url: 'http://127.0.0.1:5000/ingestionUI',
 		error: function () {
@@ -14,7 +16,8 @@ function retrieveIngestionData() {
 			createDataPanel(result.count, result.data)			
 		},
 		type: 'GET'
-	}); 
+    }); 
+    $(".loading").hide();
 }
 
 function createDataPanel(count, ingestioData){
@@ -101,7 +104,7 @@ function sortOnKeys(dict) {
     return tempDict;
 }
 
-dict = sortOnKeys(dict);
+//dict = sortOnKeys(dict);
 
 function createArchiveNeuronDict(totalCount, ingestioData){
     var dictArchiveNeuron = {};
@@ -166,6 +169,7 @@ function getDisabled(status,pos) {
 }
 
 function ingestneuron(neuron_name) {
+    $(".loading").show();
     console.log('Ingesting neuron: ' + neuron_name)
     var payload = {};
     payload['name'] = neuron_name;
@@ -182,10 +186,11 @@ function ingestneuron(neuron_name) {
             console.log(result);
         }
     });
-    
+    $(".loading").hide();
 }
 
 function ingestarchive(archive_name) {
+    $(".loading").show();
     console.log('Ingesting archive: ' + archive_name)
     var payload = {};
     payload['archive'] = archive_name;
@@ -202,5 +207,5 @@ function ingestarchive(archive_name) {
             console.log(result);
         }
     });
-     
+    $(".loading").hide();
 }
