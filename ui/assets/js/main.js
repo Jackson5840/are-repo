@@ -1,11 +1,32 @@
 $(document).ready(function() {
     console.log( "Document Loaded!" );
     retrieveIngestionData();
+    searchArchiveFilter();
 });
+
+function searchArchiveFilter(){
+    $("#searchArchive").on("keyup", function() {
+        var archiveFilter = $(this).val();
+        console.log(archiveFilter);
+
+        $(".archiveTitle").each(function () {
+            $('.panel-collapse').collapse('hide');
+            if (archiveFilter == "") {
+                $(this).parent().css("visibility", "visible");
+                $(this).parent().fadeIn();
+            } else if ($(this).text().search(new RegExp(archiveFilter, "i")) < 0) {
+                $(this).parent().css("visibility", "hidden");
+                $(this).parent().fadeOut();
+            } else {
+                $(this).parent().css("visibility", "visible");
+                $(this).parent().fadeIn();
+            }
+        });
+    });
+}
 
 function retrieveIngestionData() {
     $(".loading").show();
-    
 	 $.ajax({
 		url: 'http://127.0.0.1:5000/ingestionUI',
 		error: function () {
@@ -35,7 +56,7 @@ function createDataPanel(count, ingestioData){
             if (index == 0){
                 var elm = '<div class="card"> ' +
                 '<div class="card-header"> ' +
-                '<a data-toggle="collapse" href="#collapse' + keyCount.toString() + '"  class="" aria-expanded="true">' + neuronData[index]["archive"] + '</a> ' +
+                '<a data-toggle="collapse" href="#collapse' + keyCount.toString() + '"  class="archiveTitle" aria-expanded="true">' + neuronData[index]["archive"] + '</a> ' +
                 '<h6>Ready: ' + countData[2] +', Not Ready: ' + countData[1] +', Success: ' + countData[3] +', Warning: ' + countData[4] +', Error: ' + countData[5] +'</h6> ' +
                 '<button class="btn btn-primary btn-sm" type="button" style="float:right;margin-top: -45px;" onclick="ingestarchive(\'' + neuronData[index]["archive"]  + '\')">Ingest Archive</button>' +
                 '</div>' +
