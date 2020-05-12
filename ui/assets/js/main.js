@@ -88,7 +88,8 @@ function retrieveIngestionData() {
 			createDataPanel(result.count, result.data)			
 		},
 		type: 'GET'
-	}); 
+    }); 
+    $(".loading").hide();
 }
 
 function clearcontainer() {
@@ -433,6 +434,7 @@ $('#start_button').on('click', function () {
 
 
 function ingestarchive(archive_name) {
+    $(".loading").show();
     console.log('Ingesting archive: ' + archive_name)
     var payload = {};
     payload['archive'] = archive_name;
@@ -463,5 +465,5 @@ function ingestarchive(archive_name) {
             console.log(result);
         }
     });
-     
+    $(".loading").hide();
 }
