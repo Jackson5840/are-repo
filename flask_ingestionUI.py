@@ -10,6 +10,9 @@ import datetime
 from sqlalchemy import DateTime
 from flask_sqlalchemy import SQLAlchemy
 from are import ingest
+from are import io
+import redis
+import time
 #from IngestApp import Ingestion
 
 
@@ -17,6 +20,7 @@ app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://nmo:100neuralDB@localhost:5432/nmo"
 db = SQLAlchemy(app)
+r = redis.Redis(host='localhost', port=6379, db=0)
 
 
 
@@ -44,10 +48,33 @@ class IngestionModel(db.Model):
 
 @app.route('/', methods=['GET'])
 def get():
-    return "Ingestion UI Main Route"
+    return "Ingestion app is up!"
 
-@app.route('/ingestionUI',  methods=['GET'])
-def getUIData():
+@app.route('/getstatus/<string:archive>', methods=['GET'])
+def getstatus(archive):
+    status = {'done': float(r.get(archive))}
+    return jsonify(status)
+
+@app.route('/setstatus/', methods=['POST'])
+def setstatus():
+    payloadData = request.get_json()
+    neuron_name = payloadData['archive']
+    toset = payloadData['status']
+    r.set(archive,toset)
+    return 'status set'
+
+@app.route('/getarchives/', methods=['GET'])
+def getarchives():
+    archivelist = io.getarchivecsv()
+    return {'data': archivelist}
+
+@app.route('/readarchive/<string:archive>', methods=['GET'])
+def readarchive(archive):
+    result = io.getfiles(archive)
+    return result
+
+@app.route('/getui',  methods=['GET'])
+def getui():
     ingestionData = IngestionModel.query.all()
     results = [
         {   
@@ -63,17 +90,17 @@ def getUIData():
 
     return {"count": len(results), "data": results}
 
-@app.route('/ingestneuron',  methods=['POST'])
-def ingestneuron():
-    payloadData = request.get_json()
-    neuron_name = payloadData['name']
+@app.route('/ingestneuron/<string:neuron_name>',  methods=['GET'])
+def ingestneuron(neuron_name):
     neuronResults = ingest.ingestneuron(neuron_name)
-    return {"data" : neuronResults}
+    return neuronResults
 
 @app.route('/ingestarchive',  methods=['POST'])
 def ingestarchive():
     payloaddata = request.get_json()
     archive = payloaddata['archive']
     results = ingest.ingestarchive(archive)
+    io.exportneurons()
+    r.set(archive, 0)
     return {"data" : results}
 
