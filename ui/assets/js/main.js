@@ -89,7 +89,6 @@ function retrieveIngestionData() {
 		},
 		type: 'GET'
     }); 
-    $(".loading").hide();
 }
 
 function clearcontainer() {

@@ -18,8 +18,7 @@ import time
 
 app = Flask(__name__)
 CORS(app)
-#app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://nmo:100neuralDB@localhost:5432/nmo"
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:root@localhost:5432/nmodev"
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://nmo:100neuralDB@localhost:5432/nmo"
 db = SQLAlchemy(app)
 r = redis.Redis(host='localhost', port=6379, db=0)
 
