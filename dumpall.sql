@@ -37,8 +37,8 @@ ALTER ROLE webuser WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN NOREPL
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.2 (Ubuntu 12.2-2.pgdg19.10+1)
--- Dumped by pg_dump version 12.2 (Ubuntu 12.2-2.pgdg19.10+1)
+-- Dumped from database version 12.2 (Ubuntu 12.2-4)
+-- Dumped by pg_dump version 12.2 (Ubuntu 12.2-4)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -63,8 +63,8 @@ SET row_security = off;
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.2 (Ubuntu 12.2-2.pgdg19.10+1)
--- Dumped by pg_dump version 12.2 (Ubuntu 12.2-2.pgdg19.10+1)
+-- Dumped from database version 12.2 (Ubuntu 12.2-4)
+-- Dumped by pg_dump version 12.2 (Ubuntu 12.2-4)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -292,6 +292,21 @@ CREATE TYPE public.slicing_direction_type AS ENUM (
 ALTER TYPE public.slicing_direction_type OWNER TO postgres;
 
 --
+-- Name: status_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.status_type AS ENUM (
+    'ready',
+    'read',
+    'error',
+    'ingested',
+    'partial'
+);
+
+
+ALTER TYPE public.status_type OWNER TO postgres;
+
+--
 -- Name: ingest_celltype(text[], character varying); Type: PROCEDURE; Schema: public; Owner: nmo
 --
 
@@ -434,7 +449,7 @@ BEGIN
 	VALUES(a_neuron_name, a_archive_id,
 		a_age,a_region_id, a_celltype_id, a_depositiondate, a_uploaddate, a_publication_id, a_expcond_id, magnification, a_summary_meas_id, objective, a_originalformat_id, protocol, a_slicing_direction, slicingthickness, a_staining_id, shrinkage, a_shrinkagevalue_id, age_scale, gender, max_age,min_age,min_weight,max_weight,note, a_url_reference, a_strain_id, a_reconstruction_software);
         select neuron.id into a_neuron_id from neuron where neuron.name = a_neuron_name;
-        UPDATE ingestion set status=3,ingestion_date = a_uploaddate WHERE ingestion.neuron_name = a_neuron_name;
+        UPDATE ingestion set status='read',ingestion_date = a_uploaddate, message='Read from source' WHERE ingestion.neuron_name = a_neuron_name;
         insert into export (neuron_id,exportdate,status) VALUES (a_neuron_id,(SELECT CURRENT_DATE),'ready');
 
 COMMIT;
@@ -632,8 +647,8 @@ CREATE TABLE public.ingested_archives (
     id integer NOT NULL,
     name character varying(255),
     date date,
-    status smallint,
-    message text
+    message text,
+    status public.status_type
 );
 
 
@@ -661,12 +676,10 @@ CREATE TABLE public.ingestion (
     id integer NOT NULL,
     neuron_id integer,
     ingestion_date date,
-    status integer,
-    warnings text,
-    errors text,
-    premessage text,
+    message text,
     neuron_name character varying(255),
-    archive character varying(255)
+    archive character varying(255),
+    status public.status_type
 );
 
 
@@ -1139,195 +1152,7 @@ COPY public.export (id, neuron_id, old_neuronid, exportdate, status, message) FR
 -- Data for Name: ingested_archives; Type: TABLE DATA; Schema: public; Owner: nmo
 --
 
-COPY public.ingested_archives (id, name, date, status, message) FROM stdin;
-1	Lefler_Amsalem	2020-05-11	\N	\N
-2	Ellender	2020-05-11	\N	\N
-3	Weiss_Manzini	2020-05-11	\N	\N
-4	Chen_Zhao	2020-05-11	\N	\N
-5	Lefler_Amsalem	2020-05-11	\N	\N
-6	Ellender	2020-05-11	\N	\N
-7	Weiss_Manzini	2020-05-11	\N	\N
-8	Chen_Zhao	2020-05-11	\N	\N
-9	Lefler_Amsalem	2020-05-11	\N	\N
-10	Ellender	2020-05-11	\N	\N
-11	Weiss_Manzini	2020-05-11	\N	\N
-12	Chen_Zhao	2020-05-11	\N	\N
-13	Lefler_Amsalem	2020-05-11	\N	\N
-14	Ellender	2020-05-11	\N	\N
-15	Weiss_Manzini	2020-05-11	\N	\N
-16	Lefler_Amsalem	2020-05-11	\N	\N
-17	Ellender	2020-05-11	\N	\N
-18	Weiss_Manzini	2020-05-11	\N	\N
-19	Lefler_Amsalem	2020-05-11	\N	\N
-20	Ellender	2020-05-11	\N	\N
-21	Weiss_Manzini	2020-05-11	\N	\N
-22	Lefler_Amsalem	2020-05-11	\N	\N
-23	Ellender	2020-05-11	\N	\N
-24	Weiss_Manzini	2020-05-11	\N	\N
-25	Lefler_Amsalem	2020-05-11	\N	\N
-26	Ellender	2020-05-11	\N	\N
-27	Weiss_Manzini	2020-05-11	\N	\N
-28	Lefler_Amsalem	2020-05-11	\N	\N
-29	Ellender	2020-05-11	\N	\N
-30	Weiss_Manzini	2020-05-11	\N	\N
-31	Lefler_Amsalem	2020-05-11	\N	\N
-32	Ellender	2020-05-11	\N	\N
-33	Weiss_Manzini	2020-05-11	\N	\N
-34	Lefler_Amsalem	2020-05-11	\N	\N
-35	Ellender	2020-05-11	\N	\N
-36	Weiss_Manzini	2020-05-11	\N	\N
-37	Lefler_Amsalem	2020-05-11	\N	\N
-38	Lefler_Amsalem	2020-05-11	\N	\N
-39	Lefler_Amsalem	2020-05-11	\N	\N
-40	Lefler_Amsalem	2020-05-11	\N	\N
-41	Lefler_Amsalem	2020-05-11	\N	\N
-42	Lefler_Amsalem	2020-05-11	\N	\N
-43	Lefler_Amsalem	2020-05-11	\N	\N
-44	Lefler_Amsalem	2020-05-11	\N	\N
-45	Lefler_Amsalem	2020-05-11	\N	\N
-46	Lefler_Amsalem	2020-05-11	\N	\N
-47	Ellender	2020-05-11	\N	\N
-48	Ellender	2020-05-11	\N	\N
-49	Bianco	2020-05-11	\N	\N
-50	Canavesi	2020-05-11	\N	\N
-51	Bianco	2020-05-11	\N	\N
-52	Canavesi	2020-05-11	\N	\N
-53	Bianco	2020-05-11	\N	\N
-54	Canavesi	2020-05-11	\N	\N
-55	Bianco	2020-05-11	\N	\N
-56	Canavesi	2020-05-11	\N	\N
-57	Bianco	2020-05-11	\N	\N
-58	Canavesi	2020-05-11	\N	\N
-59	Bianco	2020-05-11	\N	\N
-60	Canavesi	2020-05-11	\N	\N
-61	Bianco	2020-05-11	\N	\N
-62	Canavesi	2020-05-11	\N	\N
-63	Bianco	2020-05-11	\N	\N
-64	Canavesi	2020-05-11	\N	\N
-65	Bianco	2020-05-11	\N	\N
-66	Canavesi	2020-05-11	\N	\N
-67	Bianco	2020-05-11	\N	\N
-68	Canavesi	2020-05-11	\N	\N
-69	Bianco	2020-05-11	\N	\N
-70	Canavesi	2020-05-11	\N	\N
-71	Bianco	2020-05-11	\N	\N
-72	Canavesi	2020-05-11	\N	\N
-73	Canavesi	2020-05-11	\N	\N
-74	Bianco	2020-05-11	\N	\N
-75	Canavesi	2020-05-11	\N	\N
-76	Bianco	2020-05-11	\N	\N
-77	Bianco	2020-05-11	\N	\N
-78	Canavesi	2020-05-11	\N	\N
-79	Bianco	2020-05-11	\N	\N
-80	Canavesi	2020-05-11	\N	\N
-81	Canavesi	2020-05-11	\N	\N
-82	Bianco	2020-05-11	\N	\N
-83	Bianco	2020-05-11	\N	\N
-84	Canavesi	2020-05-11	\N	\N
-85	Bianco	2020-05-11	\N	\N
-86	Canavesi	2020-05-11	\N	\N
-87	Canavesi	2020-05-11	\N	\N
-88	Bianco	2020-05-11	\N	\N
-89	Canavesi	2020-05-11	\N	\N
-90	Bianco	2020-05-11	\N	\N
-91	Bianco	2020-05-11	\N	\N
-92	Canavesi	2020-05-11	\N	\N
-93	Canavesi	2020-05-11	\N	\N
-94	Bianco	2020-05-11	\N	\N
-95	Bianco	2020-05-11	\N	\N
-96	Canavesi	2020-05-11	\N	\N
-97	Bianco	2020-05-11	\N	\N
-98	Canavesi	2020-05-11	\N	\N
-99	Bianco	2020-05-11	\N	\N
-100	Canavesi	2020-05-11	\N	\N
-101	Bianco	2020-05-11	\N	\N
-102	Canavesi	2020-05-11	\N	\N
-103	Bianco	2020-05-11	\N	\N
-104	Canavesi	2020-05-11	\N	\N
-105	Canavesi	2020-05-11	\N	\N
-106	Bianco	2020-05-11	\N	\N
-107	Bianco	2020-05-11	\N	\N
-108	Canavesi	2020-05-11	\N	\N
-109	Bianco	2020-05-11	\N	\N
-110	Canavesi	2020-05-11	\N	\N
-111	Bianco	2020-05-11	\N	\N
-112	Canavesi	2020-05-11	\N	\N
-113	Canavesi	2020-05-11	\N	\N
-114	Bianco	2020-05-11	\N	\N
-115	Bianco	2020-05-11	\N	\N
-116	Canavesi	2020-05-11	\N	\N
-117	Bianco	2020-05-11	\N	\N
-118	Canavesi	2020-05-11	\N	\N
-119	Bianco	2020-05-11	\N	\N
-120	Canavesi	2020-05-11	\N	\N
-121	Bianco	2020-05-11	\N	\N
-122	Canavesi	2020-05-11	\N	\N
-123	Bianco	2020-05-11	\N	\N
-124	Canavesi	2020-05-11	\N	\N
-125	Bianco	2020-05-11	\N	\N
-126	Canavesi	2020-05-11	\N	\N
-127	Bianco	2020-05-11	\N	\N
-128	Canavesi	2020-05-11	\N	\N
-129	Bianco	2020-05-11	\N	\N
-130	Canavesi	2020-05-11	\N	\N
-131	Bianco	2020-05-11	\N	\N
-132	Canavesi	2020-05-11	\N	\N
-133	Bianco	2020-05-11	\N	\N
-134	Canavesi	2020-05-11	\N	\N
-135	Canavesi	2020-05-11	\N	\N
-136	Bianco	2020-05-11	\N	\N
-137	Canavesi	2020-05-11	\N	\N
-138	Bianco	2020-05-11	\N	\N
-139	Bianco	2020-05-11	\N	\N
-140	Canavesi	2020-05-11	\N	\N
-141	Bianco	2020-05-11	\N	\N
-142	Canavesi	2020-05-11	\N	\N
-143	Bianco	2020-05-11	\N	\N
-144	Canavesi	2020-05-11	\N	\N
-145	Bianco	2020-05-11	\N	\N
-146	Canavesi	2020-05-11	\N	\N
-147	Bianco	2020-05-11	\N	\N
-148	Canavesi	2020-05-11	\N	\N
-149	Bianco	2020-05-11	\N	\N
-150	Canavesi	2020-05-11	\N	\N
-151	Bianco	2020-05-11	\N	\N
-152	Canavesi	2020-05-11	\N	\N
-153	Bianco	2020-05-11	\N	\N
-154	Canavesi	2020-05-11	\N	\N
-155	Canavesi	2020-05-11	\N	\N
-156	Bianco	2020-05-11	\N	\N
-157	Canavesi	2020-05-11	\N	\N
-158	Bianco	2020-05-11	\N	\N
-159	Bianco	2020-05-11	\N	\N
-160	Canavesi	2020-05-11	\N	\N
-161	Bianco	2020-05-11	\N	\N
-162	Canavesi	2020-05-11	\N	\N
-163	Bianco	2020-05-11	\N	\N
-164	Canavesi	2020-05-11	\N	\N
-165	Canavesi	2020-05-11	\N	\N
-166	Bianco	2020-05-11	\N	\N
-167	Bianco	2020-05-11	\N	\N
-168	Canavesi	2020-05-11	\N	\N
-169	Canavesi	2020-05-12	\N	\N
-170	Bianco	2020-05-12	\N	\N
-171	Weston	2020-05-12	\N	\N
-172	Naegele	2020-05-12	\N	\N
-173	Bianco	2020-05-12	\N	\N
-174	Canavesi	2020-05-12	\N	\N
-175	Weston	2020-05-12	\N	\N
-176	Naegele	2020-05-12	\N	\N
-177	Bianco	2020-05-12	\N	\N
-178	Canavesi	2020-05-12	\N	\N
-179	Weston	2020-05-12	\N	\N
-180	Naegele	2020-05-12	\N	\N
-181	Bianco	2020-05-12	\N	\N
-182	Canavesi	2020-05-12	\N	\N
-183	Weston	2020-05-12	\N	\N
-184	Naegele	2020-05-12	\N	\N
-185	Bianco	2020-05-12	\N	\N
-186	Canavesi	2020-05-12	\N	\N
-187	Weston	2020-05-12	\N	\N
-188	Naegele	2020-05-12	\N	\N
+COPY public.ingested_archives (id, name, date, message, status) FROM stdin;
 \.
 
 
@@ -1335,7 +1160,7 @@ COPY public.ingested_archives (id, name, date, status, message) FROM stdin;
 -- Data for Name: ingestion; Type: TABLE DATA; Schema: public; Owner: nmo
 --
 
-COPY public.ingestion (id, neuron_id, ingestion_date, status, warnings, errors, premessage, neuron_name, archive) FROM stdin;
+COPY public.ingestion (id, neuron_id, ingestion_date, message, neuron_name, archive, status) FROM stdin;
 \.
 
 
@@ -2011,6 +1836,39 @@ COPY public.measurements (id, soma_surface, n_stems, n_bifs, n_branch, width, he
 5028	\N	1	29	59	27.56	20.92	40	0.25	308.283	242.125	15.1328	51.883	108.26	16	0.761818	683	0.704209	2	116.934	95.54700000000001	1.22421
 5029	\N	1	57	115	68.75	15.43	141.92	0.25	881.712	692.495	43.2809	169.75599999999997	344.931	29	0.791967	1240	0.5909979999999999	2	116.542	106.836	1.1760700000000002
 5030	\N	1	33	67	27.12	14.45	101.25	0.25	637.997	501.082	31.3176	108.544	294.985	18	0.796477	1322	0.5928800000000001	2	127.32799999999999	121.56200000000001	1.13037
+5031	\N	2	41	84	915.12	831.17	66	0.25	8533.49	6702.18	418.88699999999994	840.566	1953.03	18	0.839975	6154	0.6402770000000001	2	109.50200000000001	107.944	1.04891
+5032	\N	1	8	17	876.965	845.623	33	0.25	2848.45	2237.17	139.82299999999998	857.778	1681.46	7	0.8852969999999999	1264	0.708333	2	107.89299999999999	93.7412	1.0363799999999999
+5033	\N	2	1	4	66.85	521.45	27	0.25	684.36	537.495	33.5934	370.338	397.01099999999997	2	0.8652690000000001	283	0.5	2	142.404	133.496	1.0467
+5034	\N	1	37	75	564.77	623.76	43.5	0.25	5235.57	4112.01	257.001	742.632	1786.64	18	0.8285040000000001	3407	0.69119	2	117.475	112.852	1.0676
+5035	\N	1	11	23	457.46	664.92	13.5	0.25	2252.33	1768.98	110.561	690.475	1284.43	10	0.867079	1042	0.8	2	121.34299999999999	110.78399999999999	1.04144
+5036	\N	1	28	57	650.41	835.42	48	0.25	5074.63	3985.6	249.1	611.988	2196.15	15	0.8454940000000001	3383	0.761154	2	101.125	105.255	1.05397
+5037	\N	1	16	33	720.74	756.09	60	0.25	3697.52	2904.03	181.502	820.222	1646.32	8	0.814419	2360	0.502083	2	104.581	120.689	1.05784
+5038	\N	1	26	53	620.45	870.82	43.5	0.25	4506.47	3539.37	221.21099999999998	1003.03	2502.63	21	0.872976	2859	0.758242	2	94.3053	100.82700000000001	1.04535
+5039	\N	2	44	90	806.31	986.65	105	0.25	8984.47	7056.39	441.024	820.1610000000001	1979.97	13	0.816002	6351	0.607546	2	110.484	114.03399999999999	1.06071
+5040	\N	1	25	51	540.059	653.784	48	0.25	5272.88	4141.31	258.832	753.3989999999999	2318.13	11	0.831259	4006	0.541484	2	93.2469	90.1327	1.06206
+5041	\N	1	19	39	695.997	541.2130000000001	103.5	0.25	4216.8	3311.87	206.99200000000002	713.821	1713.14	11	0.827248	3023	0.573549	2	105.152	101.161	1.05249
+5042	\N	1	10	21	108.97	32.43	51	0.25	352.755	277.053	17.3158	126.625	276.078	8	0.739152	1251	0.625	2	127.927	83.6123	1.16442
+5043	\N	1	17	35	138.09	39.96	95.3	0.25	596.788	468.716	29.2948	162.82399999999998	512.749	13	0.805937	1354	0.7507	2	134.155	121.98200000000001	1.1587100000000001
+5044	\N	1	42	85	30.14	20.11	131.25	0.25	1223.58	960.995	60.0622	150.082	395.101	20	0.830357	1266	0.6656810000000001	2	127.84899999999999	107.041	1.15921
+5045	\N	1	35	71	158.4	37.69	196	0.25	1300.25	1021.21	63.8258	173.045	813.168	23	0.787365	2370	0.67825	2	121.721	110.859	1.11981
+5046	\N	1	25	51	84.02	19.87	378	0.25	1387.97	1090.11	68.1316	204.135	1001.09	16	0.833059	1149	0.7504270000000001	2	136.989	113.818	1.10216
+5047	\N	1	26	53	107.81	56.78	70	0.25	399.027	313.395	19.5872	132.924	252.825	14	0.816715	1372	0.602607	2	121.553	120.34899999999999	1.1414
+5048	\N	1	43	87	146.53	50.05	128	0.25	1304.66	1024.68	64.0424	180.937	781.576	18	0.799619	2010	0.680596	2	126.583	102.86	1.16746
+5049	\N	1	45	91	93.49	23.18	393.75	0.25	1843.05	1447.52	90.4703	277.126	1205.25	14	0.8382120000000001	1676	0.56448	2	116.939	111.258	1.14277
+5050	\N	1	29	59	27.56	20.92	40	0.25	308.283	242.125	15.1328	51.883	108.26	16	0.761818	683	0.704209	2	116.934	95.54700000000001	1.22421
+5051	\N	1	57	115	68.75	15.43	141.92	0.25	881.712	692.495	43.2809	169.75599999999997	344.931	29	0.791967	1240	0.5909979999999999	2	116.542	106.836	1.1760700000000002
+5052	\N	1	33	67	27.12	14.45	101.25	0.25	637.997	501.082	31.3176	108.544	294.985	18	0.796477	1322	0.5928800000000001	2	127.32799999999999	121.56200000000001	1.13037
+5053	\N	1	33	67	27.12	14.45	101.25	0.25	637.997	501.082	31.3176	108.544	294.985	18	0.796477	1322	0.5928800000000001	2	127.32799999999999	121.56200000000001	1.13037
+5054	\N	1	57	115	68.75	15.43	141.92	0.25	881.712	692.495	43.2809	169.75599999999997	344.931	29	0.791967	1240	0.5909979999999999	2	116.542	106.836	1.1760700000000002
+5055	\N	1	29	59	27.56	20.92	40	0.25	308.283	242.125	15.1328	51.883	108.26	16	0.761818	683	0.704209	2	116.934	95.54700000000001	1.22421
+5056	\N	1	45	91	93.49	23.18	393.75	0.25	1843.05	1447.52	90.4703	277.126	1205.25	14	0.8382120000000001	1676	0.56448	2	116.939	111.258	1.14277
+5057	\N	1	43	87	146.53	50.05	128	0.25	1304.66	1024.68	64.0424	180.937	781.576	18	0.799619	2010	0.680596	2	126.583	102.86	1.16746
+5058	\N	1	26	53	107.81	56.78	70	0.25	399.027	313.395	19.5872	132.924	252.825	14	0.816715	1372	0.602607	2	121.553	120.34899999999999	1.1414
+5059	\N	1	35	71	158.4	37.69	196	0.25	1300.25	1021.21	63.8258	173.045	813.168	23	0.787365	2370	0.67825	2	121.721	110.859	1.11981
+5060	\N	1	25	51	84.02	19.87	378	0.25	1387.97	1090.11	68.1316	204.135	1001.09	16	0.833059	1149	0.7504270000000001	2	136.989	113.818	1.10216
+5061	\N	1	42	85	30.14	20.11	131.25	0.25	1223.58	960.995	60.0622	150.082	395.101	20	0.830357	1266	0.6656810000000001	2	127.84899999999999	107.041	1.15921
+5062	\N	1	17	35	138.09	39.96	95.3	0.25	596.788	468.716	29.2948	162.82399999999998	512.749	13	0.805937	1354	0.7507	2	134.155	121.98200000000001	1.1587100000000001
+5063	\N	1	10	21	108.97	32.43	51	0.25	352.755	277.053	17.3158	126.625	276.078	8	0.739152	1251	0.625	2	127.927	83.6123	1.16442
 \.
 
 
@@ -7095,6 +6953,39 @@ COPY public.shrinkagevalue (id, reported_value, reported_xy, reported_z, correct
 5003	\N	\N	\N	\N	\N	\N
 5004	\N	\N	\N	\N	\N	\N
 5005	\N	\N	\N	\N	\N	\N
+5006	\N	\N	\N	\N	\N	\N
+5007	\N	\N	\N	\N	\N	\N
+5008	\N	\N	\N	\N	\N	\N
+5009	\N	\N	\N	\N	\N	\N
+5010	\N	\N	\N	\N	\N	\N
+5011	\N	\N	\N	\N	\N	\N
+5012	\N	\N	\N	\N	\N	\N
+5013	\N	\N	\N	\N	\N	\N
+5014	\N	\N	\N	\N	\N	\N
+5015	\N	\N	\N	\N	\N	\N
+5016	\N	\N	\N	\N	\N	\N
+5017	\N	\N	\N	\N	\N	\N
+5018	\N	\N	\N	\N	\N	\N
+5019	\N	\N	\N	\N	\N	\N
+5020	\N	\N	\N	\N	\N	\N
+5021	\N	\N	\N	\N	\N	\N
+5022	\N	\N	\N	\N	\N	\N
+5023	\N	\N	\N	\N	\N	\N
+5024	\N	\N	\N	\N	\N	\N
+5025	\N	\N	\N	\N	\N	\N
+5026	\N	\N	\N	\N	\N	\N
+5027	\N	\N	\N	\N	\N	\N
+5028	\N	\N	\N	\N	\N	\N
+5029	\N	\N	\N	\N	\N	\N
+5030	\N	\N	\N	\N	\N	\N
+5031	\N	\N	\N	\N	\N	\N
+5032	\N	\N	\N	\N	\N	\N
+5033	\N	\N	\N	\N	\N	\N
+5034	\N	\N	\N	\N	\N	\N
+5035	\N	\N	\N	\N	\N	\N
+5036	\N	\N	\N	\N	\N	\N
+5037	\N	\N	\N	\N	\N	\N
+5038	\N	\N	\N	\N	\N	\N
 \.
 
 
@@ -7181,35 +7072,35 @@ SELECT pg_catalog.setval('public.expcond_id_seq', 49, true);
 -- Name: export_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.export_id_seq', 982, true);
+SELECT pg_catalog.setval('public.export_id_seq', 1004, true);
 
 
 --
 -- Name: ingested_archives_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.ingested_archives_id_seq', 188, true);
+SELECT pg_catalog.setval('public.ingested_archives_id_seq', 192, true);
 
 
 --
 -- Name: ingestion_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.ingestion_id_seq', 43108, true);
+SELECT pg_catalog.setval('public.ingestion_id_seq', 43371, true);
 
 
 --
 -- Name: measurements_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.measurements_id_seq', 5030, true);
+SELECT pg_catalog.setval('public.measurements_id_seq', 5063, true);
 
 
 --
 -- Name: neuron_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.neuron_id_seq', 4107, true);
+SELECT pg_catalog.setval('public.neuron_id_seq', 4140, true);
 
 
 --
@@ -7223,7 +7114,7 @@ SELECT pg_catalog.setval('public.neuron_segment_id_seq', 1, false);
 -- Name: neuron_structure_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.neuron_structure_id_seq', 746, true);
+SELECT pg_catalog.setval('public.neuron_structure_id_seq', 768, true);
 
 
 --
@@ -7251,7 +7142,7 @@ SELECT pg_catalog.setval('public.region_id_seq', 115, true);
 -- Name: shrinkagevalue_id_seq; Type: SEQUENCE SET; Schema: public; Owner: nmo
 --
 
-SELECT pg_catalog.setval('public.shrinkagevalue_id_seq', 5005, true);
+SELECT pg_catalog.setval('public.shrinkagevalue_id_seq', 5038, true);
 
 
 --
@@ -7625,8 +7516,8 @@ GRANT ALL ON DATABASE nmo TO webuser;
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.2 (Ubuntu 12.2-2.pgdg19.10+1)
--- Dumped by pg_dump version 12.2 (Ubuntu 12.2-2.pgdg19.10+1)
+-- Dumped from database version 12.2 (Ubuntu 12.2-4)
+-- Dumped by pg_dump version 12.2 (Ubuntu 12.2-4)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -7652,6 +7543,21 @@ CREATE EXTENSION IF NOT EXISTS ltree WITH SCHEMA public;
 
 COMMENT ON EXTENSION ltree IS 'data type for hierarchical tree-like structures';
 
+
+--
+-- Name: status_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.status_type AS ENUM (
+    'ready',
+    'read',
+    'error',
+    'ingested',
+    'partial'
+);
+
+
+ALTER TYPE public.status_type OWNER TO postgres;
 
 --
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: postgres
