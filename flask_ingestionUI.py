@@ -63,10 +63,17 @@ def setstatus():
     r.set(archive,toset)
     return 'status set'
 
+@app.route('/getdm/', methods=['GET'])
+def getdm():
+    with open('datamodel.json') as json_file:
+        data = json.load(json_file)
+    return {'data': data}
+
 @app.route('/getarchives/', methods=['GET'])
 def getarchives():
     archivelist = io.getarchivecsv()
     return {'data': archivelist}
+
 
 @app.route('/readarchive/<string:archive>', methods=['GET'])
 def readarchive(archive):

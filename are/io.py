@@ -149,13 +149,14 @@ def setready(folderpath,archive):
         else:
             com.insert('ingestion',{
                 'neuron_name': neuron_name,
-                'status': 2,
+                'status': 'read',
                 'archive': archive,
                 'ingestion_date': dt_string
             })
     com.insert('ingested_archives',{
         'name': archive,
         'date': dt_string
+        'status': 'read'
     })
 
 def exportfiles(archivelist):
@@ -166,12 +167,44 @@ def exportfiles(archivelist):
     
 
 def getarchivecsv():
+    # fetch archives from csv
+    # add information from ingested archives
     csvpath = os.path.join(cfg.remotepath,'readyarchives.csv')
-        
+    
+    archives = []
     with open(csvpath, newline='') as csvfile:
         areader = csv.reader(csvfile, delimiter=',', quotechar='"')
         row = next(areader)
-    return row
+    for item in row:
+        res = com.getarchiveneuronstatus(item)
+        ares = com.getarchiveingestionstatus(item)
+        if not res:
+            archiverecord = {'name': item, "status": "ready", "link": "", "neurons": []}
+            ingestdate = datetime.now().date().strftime('%Y-%m-%d')
+        else:
+            # check all statuses
+            statuses = [d["status"] for d in res]
+            # set archive status to 
+            # 1) ingested if ALL neurons have status ingested
+            # 2) partial if ANY neurons have status ingested
+            # 3) read if NO neurons have status ingested
+            ingested = [s == "ingested" for s in statuses]
+            if all(ingested):
+                archivestatus = 'ingested'
+            elif any(ingested):
+                archivestatus = 'partial'
+            else:
+                archivestatus = 'read'
+            
+            adate = res[0]["ingestion_date"]
+            archiverecord = ({
+                'name': item,
+                'status': archivestatus,
+                'link': 'http://cng.gmu.edu:8080/neuroMorphoDev/NeuroMorpho_ArchiveLinkout.jsp?ARCHIVE={}&DATE={}'.format(item,adate),
+                'neurons': res
+            })
+            
+    return archives
 
 
 def put_all(self,localpath,remotepath):

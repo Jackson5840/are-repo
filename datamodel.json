@@ -1,0 +1,31 @@
+{
+    "archives": [
+        {"name": "Bianco", "status": "complete", "link": "http://neuromorpho.org/xxx", "message": "Sucess deluxe",
+            "neurons": [
+                {"name": "xxx", "status": "ingested", "message": "ok", "link": "http://neuromorpho.org/333"},
+                {"name": "yyy", "status": "ingested", "message": "ok", "link": "http://neuromorpho.org/444"}
+            ]
+        },
+        {"name": "Canavesi", "status": "read", "link": "",
+            "neurons": [
+                {"name": "xxx1", "status": "read"},
+                {"name": "yyy1", "status": "read"}
+            ]
+        },
+        {"name": "Andanother", "status": "ready", "link": "",
+            "neurons": [                
+            ]
+        },
+        {"name": "Andanother2", "status": "error", "link": "", "message": "Mismatch deluxe",
+            "neurons": [                
+            ]
+        },
+        {"name": "Another", "status": "partial", "link": "http://neuromorpho.org/yyy",
+            "neurons": [
+                {"name": "xxx2", "status": "read"},
+                {"name": "yyy2", "status": "ingested"},
+                {"name": "yyy2", "status": "error", "message": "already in db"}                
+            ]
+        }
+    ]
+}

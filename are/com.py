@@ -6,6 +6,7 @@ from . import cfg
 from . import io
 
 
+
 def pgconnect(f):
     #decorator for postgres operations
     def pgconnect_(*args, **kwargs):
@@ -49,6 +50,23 @@ def myconnect(f):
             conn.close()
         return rv
     return myconnect_
+
+@pgconnect
+def getarchiveneuronstatus(conn,archive):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    stmt = "SELECT neuron_name, ingestion_date, message, status from ingestion where archive = {}".format(archive)
+    cur.execute(stmt)
+    res = cur.fetchall()
+    return res
+
+@pgconnect
+def getarchiveneuronstatus(conn,archive):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    stmt = "SELECT name, date, message, status from ingestion where archive = {}".format(archive)
+    cur.execute(stmt)
+    res = cur.fetchall()
+    return res
+
 
 @myconnect
 def insertbrainregions(conn,regdict,neuron_id):
@@ -215,20 +233,6 @@ def exportmeasurements(conn,neuron_id,oldid,neuron_name):
     myinsert('measurements',res2)
     return res2
 
-
-@pgconnect    
-def getreadyneurons(conn):
-    # read named fields from db for neurons that are ready
-    # store in dict with field names as keys and return value 
-    cols = ['name','archive_id','age','region_id','celltype_id','depositiondate','uploaddate','publication_id','expcond_id','magnification','summary_meas_id','objective','originalformat_id','slicing_direction','slicingthickness','shrinkage','shrinkagevalue_id','age_scale','gender','max_age','min_age','min_weight','max_weight','note','url_reference','staining_id','protocol','oldid','strain_id']
-    cur = conn.cursor()
-    statement = "SELECT {} from neuron,export where neuron.id = export.neuron_id and export.status = 'ready' limit 10".format(','.join(cols))
-    cur.execute(statement)
-    result = cur.fetchall()
-    dictres = []
-    for row in result:
-        dictres.append(dict(zip(cols,row))) 
-    return dictres
 
 @pgconnect
 def getrowasdict(conn,table,id):
@@ -708,18 +712,6 @@ def ingestcelltype(adict):
 
     return theid[0]
 
-def getreadyneurons(archive):
-    # get array of ready neuron names
-    conn = connect()
-    cur = conn.cursor()
-
-    statement = "SELECT neuron_name FROM ingestion WHERE (status = 2 OR status = 5) AND archive = '{}'".format(archive)
-    cur.execute(statement)
-    result = cur.fetchall()
-    res = [item[0] for item in result]
-    conn.close()
-    return res
-
 def getneuronarchive(neuron_name):
     # get archive of ready neuron names
     conn = connect()
@@ -737,6 +729,6 @@ def setneuronerror(neuron_name,message):
     conn = connect()
     cur = conn.cursor()
 
-    statement = "UPDATE ingestion SET status=5, errors = '{}' WHERE neuron_name = '{}'".format(cleanerr(message),neuron_name)
+    statement = "UPDATE ingestion SET status='error', message = '{}' WHERE neuron_name = '{}'".format(cleanerr(message),neuron_name)
     cur.execute(statement)
     conn.close()

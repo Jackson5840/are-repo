@@ -2,10 +2,25 @@ var activearchives
 var loadcount
 var ingestcount
 var neur
+var dm
+
 
 $(document).ready(function() {
-    console.log( "Document Loaded!" );
-    getarchives();
+    dm = {}
+    $.ajax({
+        url: 'http://127.0.0.1:5000/getarchives',
+        error: function () {
+            console.log("Error!");
+        },
+        success: function (result) {
+            console.log(result);
+            createArchivePanel(result.data);
+            createDataPanel(result.data)
+            dm = result.data;			
+        },
+        type: 'GET'
+    });
+    console.log( "Datamodel Loaded!" );
 });
 
 function getarchives() {
@@ -17,8 +32,10 @@ function getarchives() {
        },
        success: function (result) {
            console.log(result)
+           get
            activearchives= result.data
-           createArchivePanel(result.data)			
+           createArchivePanel(result.data)
+           //createDataPanel(result.data)			
        },
        type: 'GET'
    });
@@ -26,7 +43,9 @@ function getarchives() {
 }
 
 function readarchives() {
-    // read available archives - on clicking "read archives"
+    /* read available archives - on clicking "read archives"
+        returns archives and their statuses.
+    */
 
     part = 100/activearchives.length
     loadcount = 0;
@@ -102,13 +121,33 @@ function createArchivePanel(archives) {
         <div class="card-body">
         <h5 class="card-title">Available archives</h5>
         <div class="bd-example">`
-    archives.forEach(element => {
+    archives.forEach(archive => {
+        switch (archive.status) {
+            case 'ready':
+                btnclass = 'btn-secondary'
+                break;
+            case 'error':
+                btnclass = 'btn-danger'
+                break;
+            case 'partial':
+                btnclass = 'btn-warning'
+                break;
+            case 'read':
+                btnclass = 'btn-info'
+                break;
+            case 'complete':
+                btnclass = 'btn-success'
+                break;
+            default:
+                btnclass = 'btn-secondary'
+                break;
+        }
         pcontent += `
         <div class="btn-group">
-        <button id="${element}_button" type="button" class="btn btn-secondary dropdown-toggle m-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">${element}</button>
+        <button id="${archive.name}_button" type="button" class="btn ${btnclass} dropdown-toggle m-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">${archive.name}</button>
         <div class="dropdown-menu p-4 text-muted" style="max-width: 200px;">
-        <p id="${element}_message">
-            Ready for reading.
+        <p id="${archive.name}_message">
+            ${archive.message}.
         </p>
         </div>
         </div>`;
@@ -205,67 +244,78 @@ function ingestallneurons(archive,nData) {
 
 }
 
-function createDataPanel(count, ingestioData){
+function createDataPanel(archives){
     
-    console.log("Ready to Create!")
-    console.log("Total Count - " + count.toString())
-    dictArchiveNeuron = createArchiveNeuronDict(count, ingestioData);
-    dictArchiveCount = createArchiveCountDict(count, ingestioData);
-    keyCount = 0;
-    dictArchiveNeuron = sortOnKeys(dictArchiveNeuron);
-    for (archiveKey in dictArchiveNeuron){
-        neuronData = dictArchiveNeuron[archiveKey]
-        countData = dictArchiveCount[archiveKey]
+    //dictArchiveNeuron = createArchiveNeuronDict(count, ingestioData);
+    //dictArchiveCount = createArchiveCountDict(count, ingestioData);
+    //keyCount = 0;
+    //dictArchiveNeuron = sortOnKeys(dictArchiveNeuron);
+    archives.forEach(archive => {
+        var statarr = [0,0,0];
+        var total = 0
+        archive.neurons.forEach(neuron => {
+            total++;
+            switch (neuron.status) {
+                case "error":
+                    statarr[1]++;
+                    break;
+                case "read":
+                    statarr[0]++;
+                    break;
+                case "ingested":
+                    statarr[2]++;
+                default:
+                    break;
+            }
+        });
+        if (total == 0) {
+            total++
+        } 
         
  //       for (var index = 0; index < neuronData.length; index++) {
    //         if (index == 0){
-        var total = countData[1] + countData[2] + countData[3] + countData[4] + countData[5];
         var elm = 
-        '<div class="progress">' +
-        '<div id="cnt'+ neuronData[0]["archive"] + 1 + '" class="progress-bar " role="progressbar" style="width:' + countData[1]/total * 100 + '%;  background-color:grey">Not ready</div>' +
-        '<div id="cnt'+ neuronData[0]["archive"] + 2 + '" class="progress-bar bg-info" role="progressbar" style="width:' + countData[2]/total *100 + '%">Ready</div>' +
-        '<div id="cnt'+ neuronData[0]["archive"] + 3 + '" class="progress-bar bg-success" role="progressbar" style="width:' + countData[3]/total + ';  background-color:green">Success</div>' +
-        '<div id="cnt'+ neuronData[0]["archive"] + 4 + '" class="progress-bar bg-warning" role="progressbar" style="width:' + countData[4]/total + ';  background-color:orange"> Warning</div>' +
-        '<div id="cnt'+ neuronData[0]["archive"] + 5 + '" class="progress-bar bg-danger" role="progressbar" style="width:' + countData[5]/total + ';  background-color:red">Error</div>' +
-        '</div>'+
-        '<div class="card"> ' +
-        '<div class="card-header"> ' +
-        '<a data-toggle="collapse" href="#collapse' + keyCount.toString() + '"  class="" aria-expanded="true">' + neuronData[0]["archive"] + '</a> ' +
-        `<h6>Link: <a href="http://cng.gmu.edu:8080/neuroMorphoDev/NeuroMorpho_ArchiveLinkout.jsp?ARCHIVE=${archiveKey}&DATE=${todayDate = new Date().toISOString().slice(0,10)}">to archive&gt;&gt;</a></h6> 
+        `<div class="progress">
+        <div id="cnt${archive.name + 1}" class="progress-bar " role="progressbar" style="width:${statarr[0]/total*100}%;  background-color:grey">Read</div>
+        <div id="cnt${archive.name + 2}" class="progress-bar bg-danger" role="progressbar" style="width:${statarr[1]/total*100}%;  background-color:grey">Error</div>
+        <div id="cnt${archive.name + 3}" class="progress-bar bg-success" role="progressbar" style="width:${statarr[2]/total*100}%;  background-color:grey">Ingested</div>
+        </div>
+        <div class="card">
+        <div class="card-header">
+        <a data-toggle="collapse" href="#collapse${archive.name}"  class="" aria-expanded="true">${archive.name}</a>
+        <h6>Link: <a href="http://cng.gmu.edu:8080/neuroMorphoDev/NeuroMorpho_ArchiveLinkout.jsp?ARCHIVE=${archive.name}&DATE=${archive.date}">to archive&gt;&gt;</a></h6> 
         
-        <button id="${neuronData[0]["archive"]}_ibutton" class="btn btn-primary btn-sm" type="button" style="float:right;margin-top: -45px;" onclick="ingestallneurons('${neuronData[0]["archive"]}',dictArchiveNeuron['${neuronData[0]["archive"]}'])">Ingest Archive</button>
+        <button id="${archive.name}_ibutton" class="btn btn-primary btn-sm" type="button" style="float:right;margin-top: -45px;" onclick="ingestallneurons('${archive.name}',dictArchiveNeuron['${archive.name}'])">Ingest Archive</button>
         </div>
-        <div id="collapse${keyCount.toString()}" class="panel-collapse collapse" style="">
+        <div id="collapse${archive.name}" class="panel-collapse collapse" style="">
         <div class="card-body">
-        <ul class="list-group" id="group_${neuronData[0]["archive"]}" >
+        <ul class="list-group" id="group_${archive.name}" >
         <li class="list-group-item">`
-/* 
-        elm += `
-        <li class="list-group-item">
-        <div class="btn-group">
-        <button id="${neuronData[0]["neuron_name"]}_button" type="button" class="btn btn-secondary dropdown-toggle m-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">${neuronData[0]["neuron_name"]}</button>
-        <div class="dropdown-menu p-4" style="max-width: 200px;">
-        <button class="dropdown-item" type="button">Ingest neuron</button>
-        <div class="dropdown-divider"></div>
-        <h6 class="dropdown-header">Status</h6>
-        <p class="dropdown-item disabled" id="${neuronData[0]["neuron_name"]}_message">
-            Ready for ingestion.
-        </p>
-        </div>
-        </div>
-        </li>`;
-                 */
 
-        neuronData.slice(0).forEach(element => {
+        archive.neurons.forEach(neuron => {
+            switch (neuron.status) {
+                case 'read':
+                    btnclass = 'btn-secondary'
+                    break;
+                case 'error':
+                    btnclass = 'btn-danger'
+                    break;
+                case 'ingested':
+                    btnclass = 'btn-success'
+                    break;
+                default:
+                    btnclass = 'btn-secondary'
+                    break;
+            }
             elm += `
             <div class="btn-group">
-            <button id="${element["neuron_name"]}_button" type="button" class="btn btn-secondary dropdown-toggle m-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">${element["neuron_name"]}</button>
+            <button id="${neuron.name}_button" type="button" class="btn ${btnclass} dropdown-toggle m-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">${neuron.name}</button>
             <div class="dropdown-menu p-4" style="max-width: 200px;">
-            <button class="dropdown-item" onclick="ingestneuron('${element["neuron_name"]}','${element["archive"]}',[neuronData[0]])" type="button">Ingest neuron</button>
-            <a target="_blank" id="${element["neuron_name"]}_link" class="dropdown-item disabled" href="http://cng.gmu.edu:8080/neuroMorphoDev/neuron_info.jsp?neuron_name=${element['neuron_name']}" >Neuron link </a>
+            <button class="dropdown-item" onclick="ingestneuron('${neuron.name}','${neuron.archive}')" type="button">Ingest neuron</button>
+            <a target="_blank" id="${neuron.name}_link" class="dropdown-item disabled" href="http://cng.gmu.edu:8080/neuroMorphoDev/neuron_info.jsp?neuron_name=${neuron.name}" >Neuron link </a>
             <div class="dropdown-divider"></div>
             <h6 class="dropdown-header">Status</h6>
-            <p class="dropdown-item disabled" id="${element["neuron_name"]}_message">
+            <p class="dropdown-item disabled" id="${neuron.name}_message">
                 Ready for ingestion.
             </p>
             </div>
@@ -278,42 +328,11 @@ function createDataPanel(count, ingestioData){
         </ul>
         </div>
         </div>`
-/* 
-                elm +=
-                '<li class="list-group-item">' +
-                '<h6>'+ neuronData[index]["neuron_name"] + '</h6> '+
-                '<button class="btn btn-primary btn-sm" type="button" style="float:right;margin-top: -28px;" ' + getDisabled(neuronData[index]["status"],2) + ' onclick="ingestneuron(\'' + neuronData[index]["neuron_name"]  + '\')">Ingest</button>' +
-                
-                '<button class="btn btn-dark btn-sm" type="button" style="float:left;margin-top: -4px;" ' + getDisabled(neuronData[index]["status"],1) + ' data-toggle="collapse" data-target="#error_' + neuronData[index]["archive"] + "_" + neuronData[index]["neuron_name"] + '">Not Ready</button>' +
-                '<button class="btn btn-primary btn-sm" type="button" style="float:left;margin-top: -4px;" ' + getDisabled(neuronData[index]["status"],2) + '>Ready</button>' +
-                '<button class="btn btn-success btn-sm" type="button" style="float:left;margin-top: -4px;" ' + getDisabled(neuronData[index]["status"],3) + '>Success</button>' +
-                '<button class="btn btn-warning btn-sm" data-toggle="collapse" data-target="#error_'+ neuronData[index]["archive"] + "_" + neuronData[index]["neuron_name"] + '"  type="button" style="float:left;margin-top: -4px;" ' + getDisabled(neuronData[index]["status"],4) + '>Warning</button>' +
-                '<button class="btn btn-danger btn-sm" data-toggle="collapse" data-target="#error_' + neuronData[index]["archive"] + "_" + neuronData[index]["neuron_name"] + '"  type="button" style="float:left;margin-top: -4px;" ' + getDisabled(neuronData[index]["status"],5) + '>Error</button>' +
-                ' <div id="error_' + neuronData[index]["archive"] + "_" + neuronData[index]["neuron_name"] + '" class="collapse show" style="margin-top: 40px;">' + getmessage(neuronData[index]["premessage"]) + getmessage(neuronData[index]["errors"]) +
-                '</div>' +
-                '</li>' +
-                '</ul>' +
-                '</div>' +
-                '</div>' +
-                '</div>'; */
+
         $(elm).appendTo(".container");
-/*             }
-            else {
-                listItem ='<li class="list-group-item">' +
-                        '<h6>'+ neuronData[index]["neuron_name"] + '</h6> '+
-                        '<button class="btn btn-primary btn-sm" type="button" style="float:right;margin-top: -28px;" ' + getIngest(neuronData[index]["status"]) + ' onclick="ingestneuron(\'' + neuronData[index]["neuron_name"]  + '\')">Ingest</button>' +
-                        '<button class="btn btn-dark btn-sm" type="button" style="float:left;margin-top: -4px;" data-toggle="collapse" ' + getDisabled(neuronData[index]["status"],1) + ' data-target="#error_' + neuronData[index]["archive"] + "_" + neuronData[index]["neuron_name"] + '">Not Ready</button>' +
-                        '<button class="btn btn-primary btn-sm" type="button" style="float:left;margin-top: -4px;" ' + getDisabled(neuronData[index]["status"],2) + '>Ready</button>' +
-                        '<button class="btn btn-success btn-sm" type="button" style="float:left;margin-top: -4px;" ' + getDisabled(neuronData[index]["status"],3) + '>Success</button>' +
-                        '<button class="btn btn-warning btn-sm" data-toggle="collapse" data-target="#error_'+ neuronData[index]["archive"] + "_" + neuronData[index]["neuron_name"] + '"  type="button" style="float:left;margin-top: -4px;" ' + getDisabled(neuronData[index]["status"],4) + '>Warning</button>' +
-                        '<button class="btn btn-danger btn-sm" data-toggle="collapse" data-target="#error_' + neuronData[index]["archive"] + "_" + neuronData[index]["neuron_name"] + '"  type="button" style="float:left;margin-top: -4px;" ' + getDisabled(neuronData[index]["status"],5) + '>Error</button>' +
-                        ' <div id="error_' + neuronData[index]["archive"] + "_" + neuronData[index]["neuron_name"] + '" class="collapse show" style="margin-top: 40px;"> ' + getmessage(neuronData[index]["premessage"]) + getmessage(neuronData[index]["errors"]) +
-                        '</div>' +
-                        '</li>';
-                $(listItem).appendTo('#group_' + neuronData[index]["archive"]);
-            } */
-        keyCount = keyCount + 1;
-    }
+
+            
+    });
 }
 
 function getmessage(message) {
