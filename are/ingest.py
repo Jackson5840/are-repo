@@ -43,24 +43,25 @@ def ingestexecute(neuron_name,neurontomeas,neurontometa,ndomains):
     return com.ingestneuron(neurontometa)
 
 def ingestneuron(neuron_name):
-    try:
-        archive_name = com.getneuronarchive(neuron_name)
-        neurontometa = mapneurontometa(archive_name)
-        neurontomeas = mapneurontomeasurements(archive_name)
-        (ndomains,morpho_attr) = neurondomains(neuron_name,neurontometa[neuron_name]['Physical integrity'])
-        neuron_id = ingestexecute(neuron_name,neurontomeas[neuron_name],neurontometa[neuron_name],ndomains)
-        com.ingestdomain(neuron_id,ndomains,morpho_attr)
-        io.exportneuron(neuron_name)
-        result= {
-            'status': 'success',
-            'message': 'Successful ingestion'
-        }
-    except Exception as e:
+    #try:
+    archive_name = com.getneuronarchive(neuron_name)
+    neurontometa = mapneurontometa(archive_name)
+    neurontomeas = mapneurontomeasurements(archive_name)
+    (ndomains,morpho_attr) = neurondomains(neuron_name,neurontometa[neuron_name]['Physical integrity'])
+    neuron_id = ingestexecute(neuron_name,neurontomeas[neuron_name],neurontometa[neuron_name],ndomains)
+    com.ingestdomain(neuron_id,ndomains,morpho_attr)
+    io.importpvec(neuron_id,neuron_name,archive_name)
+    io.exportneuron(neuron_name)
+    result= {
+        'status': 'success',
+        'message': 'Successful ingestion'
+    }
+    """except Exception as e:
         result= {
             'status': 'error',
             'result': str(e)
         }
-        com.setneuronerror(neuron_name,str(e)) 
+        com.setneuronerror(neuron_name,str(e)) """
     return result 
     
 

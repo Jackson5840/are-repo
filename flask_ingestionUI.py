@@ -80,6 +80,12 @@ def readarchive(archive):
     result = io.getfiles(archive)
     return result
 
+
+@app.route('/revertarchive/<string:archive>', methods=['GET'])
+def revertarchive(archive):
+    result = io.revertarchive(archive)
+    return result
+
 @app.route('/getui',  methods=['GET'])
 def getui():
     ingestionData = IngestionModel.query.all()

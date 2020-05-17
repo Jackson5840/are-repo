@@ -4,6 +4,7 @@ import paramiko
 import mysql.connector as mysc
 from . import cfg
 from . import io
+from datetime import datetime
 
 
 
@@ -25,12 +26,11 @@ def pgconnect(f):
 def escapechars(a_string):
     tdict = {
         "]":  "",
+        "[":  "",
         "^":  "",
         "$":  "",
         "*":  "",
         ".":  "",
-        "(":  "",
-        ")":  "",
         "'":  ""
     }
     for item in tdict:
@@ -54,18 +54,70 @@ def myconnect(f):
 @pgconnect
 def getarchiveneuronstatus(conn,archive):
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    stmt = "SELECT neuron_name, ingestion_date, message, status from ingestion where archive = {}".format(archive)
+    stmt = "SELECT * from ingestion where archive = '{}'".format(archive)
     cur.execute(stmt)
-    res = cur.fetchall()
-    return res
+    result = []
+    res = cur.fetchone()
+    if res:
+        res = dict(res)
+    while res:
+        result.append(res)
+        res = cur.fetchone()
+        if res:
+            res = dict(res)
+    return result
 
 @pgconnect
-def getarchiveneuronstatus(conn,archive):
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    stmt = "SELECT name, date, message, status from ingestion where archive = {}".format(archive)
+def deletearchive(conn,archive):
+    cur = conn.cursor()
+    stmt = "DELETE FROM archive where name = '{}'".format(archive)
     cur.execute(stmt)
+    stmt = "DELETE FROM ingested_archives where name = '{}'".format(archive)
+    cur.execute(stmt)
+    stmt = "DELETE FROM ingestion where archive = '{}'".format(archive)
+    cur.execute(stmt)
+
+@myconnect
+def deleteingestedneurons(conn,neuronarr):
+    cur = conn.cursor()
+    stmt = "DELETE FROM neuron where neuron.neuron_name IN ('{}')".format("','".join(neuronarr))
+    cur.execute(stmt)
+    
+
+@pgconnect
+def getarchiveingestionstatus(conn,archive):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    stmt = "SELECT name, date, message, status from ingested_archives where name = '{}'".format(archive)
+    cur.execute(stmt)
+    res = cur.fetchone()
+    if res:
+        result = dict(res)
+    else:
+        result = {}
+    return result
+
+@pgconnect
+def getpvec(conn,neuron_id):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute('select * from pvec where neuron_id ={}'.format(neuron_id))
     res = cur.fetchall()
-    return res
+    if res:
+        result = dict(res[0])
+    else:
+        result = {}
+    return result   
+
+
+def exportpvec(neuron_id,oldid):
+    dpvec = getpvec(neuron_id)
+    dpvec["Sfactor"] = dpvec.pop("sfactor")
+    del dpvec["id"]
+    dpvec["neuron_id"] = oldid
+    coeffs = dpvec["coeffs"]
+    del dpvec["coeffs"]
+    dcoeffs = {"coeff{0:0=2d}".format(i): j for (i,j) in enumerate(coeffs)}
+    newd = {**dpvec,**dcoeffs}
+    myinsert("persistance_vector",newd)
 
 
 @myconnect
@@ -158,7 +210,7 @@ def insertcompleteness(conn,neuron_id,oldid,adict):
     dcompl = {item[1]: item[0] for item in res}
     #decide domain 
     data = {}
-    data['attributes_id'] = morph_attr
+    
     dkeys = dcompl.keys()
     has_soma = adict['has_soma']
     cdict = {'Complete':2, 'Moderate': 1, 'Incomplete':0}
@@ -215,6 +267,7 @@ def insertcompleteness(conn,neuron_id,oldid,adict):
             data['domain_id']  = 3
         else:
             data['domain_id']  = 1
+    data['attributes_id'] = morph_attr
     data['neuron_id'] = oldid
     myinsert('neuron_completeness',data)
         
@@ -506,9 +559,9 @@ def myinsert(conn,tablename,data):
     return inserted_id
 
 @pgconnect
-def updateexportstatus(conn,neuron_id, oldid, status,message = ''):
+def updateneuronstatus(conn,neuron_name, status,message = ''):
     cur = conn.cursor()
-    stmt = "UPDATE export set status = '{}', message = '{}', old_neuronid = {} where neuron_id = {}".format(status,message,oldid,neuron_id)
+    stmt = "UPDATE ingestion set status = '{}', message = '{}' where neuron_name = '{}'".format(status,message,neuron_name)
     cur.execute(stmt)
 
 
@@ -531,7 +584,7 @@ def ingestneuron(d):
     if d['shrinkval_id'] == 0:
         d['shrinkval_id'] = "NULL"
     if d['URL_reference'] is None:
-        d['URL_reference'] = "NULL"
+        d['URL_reference'] = " "
     else:
         d['URL_reference']  = "'{}'".format(d['URL_reference'])
 
@@ -540,7 +593,7 @@ def ingestneuron(d):
             d[item] = escapechars(d[item])
     conn=connect()
     cur = conn.cursor()
-    statement = """CALL ingest_data('{}', '{}', '{}',  '{}', '{}','{}' , '{}' , '{}','{}', '{}','{}','{}', '{}','{}', '{}', '{}', '{}', '{}', cast({} as boolean), '{}' , '{}' , '{}', {}, {},{},{}, '{}', '{}','{}', '{}', {},'{}',{},  null)""".format(d['neuron_name'],d['archive'],d['URL_reference'],d['species'],d['expercond'],d['age_classification'],d['region'],d['celltype'],d['deposition_date'],d['uploaddate'],
+    statement = """CALL ingest_data('{}', '{}', '{}',  '{}', '{}','{}' , '{}' , '{}','{}', '{}','{}','{}', '{}','{}', '{}', '{}', '{}', '{}', cast({} as boolean), '{}' , '{}' , '{}', {}, {},{},{}, '{}', '{}','{}', '{}', {},'{}','{}',  null)""".format(d['neuron_name'],d['archive'],d['URL_reference'],d['species'],d['expercond'],d['age_classification'],d['region'],d['celltype'],d['deposition_date'],d['uploaddate'],
      d['magnification'],d['objective'],d['format'],d['protocol'],d['slice_direction'],str(d['thickness']),d['stain'],d['strain'],
      str(d['has_soma']),d['shrinkage_reported'],d['age_scale'],d['gender'],str(d['max_age']),str(d['min_age']),d['min_weight'],
      d['max_weight'],d['note'],str(d['pmid']),d['doi'],str(d['sum_mes_id']),str(d['shrinkval_id']),d['reconstruction'],d['URL_reference'])
@@ -560,7 +613,31 @@ def getarticleid(conn,pmid):
     res = cur.fetchone()
     if res is None:
         pmrecord = io.fetchpmarticle(str(pmid))
-        res = myinsert('reference_article',pmrecord)
+        refrec = pmrecord
+        del refrec["first_author"] 
+        del refrec["last_author"] 
+        del refrec["journal"] 
+        del refrec["doi"] 
+        del refrec["year"]
+        res = myinsert('reference_article',refrec)
+        stmt = "SELECT Paper_ID FROM AllPublications where PMID = {}".format(pmid)
+        cur.execute(stmt)
+        res2 = cur.fetchone()
+        if res2 is None:
+            pmrecord = io.fetchpmarticle(str(pmid))
+            now = datetime.now()
+            dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
+            myinsert('AllPublications', {
+                'PMID': pmid,
+                'DOI': pmrecord['doi'],
+                'Year': pmrecord['year'],
+                'Journal': pmrecord['journal'],
+                'Paper_Title': pmrecord['article_title'],
+                'First_Author': pmrecord['first_author'],
+                'Last_Author': pmrecord['last_author'],
+                'OCDate': dt_string,
+                'Data_Status': 'In the repository'
+            })
         return  res
     else:
         return res[0]
@@ -723,6 +800,15 @@ def getneuronarchive(neuron_name):
     res = result[0]
     conn.close()
     return res
+
+@pgconnect
+def getarchiveneurons(conn,archive):
+    cur = conn.cursor()
+    statement = "SELECT neuron.name from neuron,archive where neuron.archive_id = archive.id AND archive.name = '{}'".format(archive)
+    cur.execute(statement)
+    res = cur.fetchall()
+    result = [item[0] for item in res]
+    return result
 
 def setneuronerror(neuron_name,message):
     # get array of ready neuron names

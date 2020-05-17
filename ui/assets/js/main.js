@@ -6,40 +6,26 @@ var dm
 
 
 $(document).ready(function() {
-    dm = {}
-    $.ajax({
+    activearchives = JSON.parse(getarchives()).data
+    createArchivePanel(activearchives);
+    createDataPanel(activearchives)
+});
+
+function getarchives() {
+    //get archives available - called on load
+    dm = {};    
+    return $.ajax({
         url: 'http://127.0.0.1:5000/getarchives',
+        async: !1,
         error: function () {
             console.log("Error!");
         },
         success: function (result) {
             console.log(result);
-            createArchivePanel(result.data);
-            createDataPanel(result.data)
-            dm = result.data;			
+            activearchives = result.data;			
         },
         type: 'GET'
-    });
-    console.log( "Datamodel Loaded!" );
-});
-
-function getarchives() {
-    //get archives available - called on load
-    $.ajax({
-       url: 'http://127.0.0.1:5000/getarchives',
-       error: function () {
-           console.log("Error!");
-       },
-       success: function (result) {
-           console.log(result)
-           get
-           activearchives= result.data
-           createArchivePanel(result.data)
-           //createDataPanel(result.data)			
-       },
-       type: 'GET'
-   });
-    
+    }).responseText;
 }
 
 function readarchives() {
@@ -51,10 +37,10 @@ function readarchives() {
     loadcount = 0;
     abutton = document.getElementById("read_button");
     abutton.classList.add('disabled');
-    activearchives.forEach(element => {
+    activearchives.forEach(archive => {
         
         $.ajax({
-        url: 'http://127.0.0.1:5000/readarchive/' + element,
+        url: 'http://127.0.0.1:5000/readarchive/' + archive.name,
         error: function () {
             console.log("Error!");
         },
@@ -62,7 +48,7 @@ function readarchives() {
             console.log(result)
             loadcount++
             if (result.status == 'error') {
-                abutton = document.getElementById(element + "_button")
+                abutton = document.getElementById(archive.name + "_button")
                 abutton.classList.remove('btn-secondary')
                 abutton.classList.add('btn-danger')
                 abutton = document.getElementById("read_button")
@@ -70,20 +56,23 @@ function readarchives() {
                           
             }
             else {
-                abutton = document.getElementById(element + "_button")
+                abutton = document.getElementById(archive.name + "_button")
                 abutton.classList.remove('btn-secondary')
-                abutton.classList.add('btn-success')
+                abutton.classList.add('btn-info')
                 
 
             }
-            abuttontext = document.getElementById(element + "_message")  
+            abuttontext = document.getElementById(archive.name + "_message")  
             abuttontext.innerHTML = result.message
-            console.log(Math.round(loadcount * part))
             if (Math.round(loadcount * part) == 100) { 
                 anelem = document.getElementById("archivebar")
                 anelem.classList.remove('progress-bar-animated')
                 anelem.classList.remove('progress-bar-striped')
-                retrieveIngestionData()
+                activearchives = JSON.parse(getarchives()).data
+                abutton = document.getElementById("read_button");
+                abutton.classList.remove('disabled');
+                document.querySelector("body > main").innerHTML = ""
+                createDataPanel(activearchives)
             }
             document.getElementById("archivebar").style.width = (loadcount * part).toString() + '%';  			
         },
@@ -94,25 +83,7 @@ function readarchives() {
 
 
 
-function retrieveIngestionData() {
-    //  reading available archives - on clicking read archives
-    console.log('calling')
-	 $.ajax({
-		url: 'http://127.0.0.1:5000/getui',
-		error: function () {
-			console.log("Error!");
-		},
-		success: function (result) {
-            console.log(result)
-			createDataPanel(result.count, result.data)			
-		},
-		type: 'GET'
-    }); 
-}
 
-function clearcontainer() {
-    
-}
 
 function createArchivePanel(archives) {
     pcontent =
@@ -135,7 +106,7 @@ function createArchivePanel(archives) {
             case 'read':
                 btnclass = 'btn-info'
                 break;
-            case 'complete':
+            case 'ingested':
                 btnclass = 'btn-success'
                 break;
             default:
@@ -153,6 +124,7 @@ function createArchivePanel(archives) {
         </div>`;
     });
     pcontent += `</div>
+
        <p class="card-text"></p>
        <a id="read_button" href="#" class="btn btn-primary" onclick="readarchives()">Read archives</a>
     </div> <div class="progress">
@@ -165,8 +137,97 @@ function createArchivePanel(archives) {
 }
 
 
-function ingestneuron(neuron_name,archive,nData,nextid=-1) {
-    
+function ingestneuron(archive,icount) {
+    neuron = archive.neurons[icount];
+    part = 1 / archive.neurons.length;
+
+    console.log('Ingesting neuron: ' + neuron.neuron_name);
+    if (neuron.status != "ingested") {
+        $.ajax({
+            url: 'http://127.0.0.1:5000/ingestneuron/' + neuron.neuron_name,
+            error: function () {
+                console.log("Error!");
+            },
+            type: 'GET',
+            success: function(result) {
+                $("#inglog").innerHTML = 
+                abutton = document.getElementById(neuron.neuron_name + "_button");
+                abutton.classList.remove('btn-secondary');
+                if (result.status == 'error') {
+                    abutton.classList.add('btn-danger');
+
+                    abar = document.getElementById('cnt' + archive.name + 2)
+                    abarwidth = parseFloat(abar.style.width.slice(0,-1)) + part * 100;
+                    abar.style.width = (abarwidth).toString() + '%';
+                }
+                else {
+                    abutton.classList.add('btn-success');
+
+                    abar = document.getElementById('cnt' + archive.name + 3)
+                    abarwidth = parseFloat(abar.style.width.slice(0,-1)) + part * 100;
+                    abar.style.width = (abarwidth).toString() + '%';
+                }
+                readybar = document.getElementById('cnt' + archive.name + 1);
+                readybarwidth = parseFloat(readybar.style.width.slice(0,-1))-part * 100;
+                readybar.style.width = (readybarwidth).toString() + '%';
+                
+                abuttontext = document.getElementById(neuron.neuron_name  + "_message") ; 
+                abuttontext.innerHTML = result.message;
+
+                neuronlink = document.getElementById(neuron.neuron_name  + "_link") ;
+                neuronlink.classList.remove('disabled');
+
+                neuroningest = document.getElementById(neuron.neuron_name  + "_ingest") ;
+                neuroningest.classList.add('disabled');
+                
+                anelem = document.getElementById(archive.name + "_button");
+                anelem.classList.remove('btn-info');
+                anelem.classList.add('btn-warning');
+
+                console.log(Math.round(part))
+                if (Math.round((icount+1)*part*100) == 100) { 
+                    anelem = document.getElementById('cnt' + archive.name + 1);
+                    anelem.classList.remove('progress-bar-animated');
+                    anelem.classList.remove('progress-bar-striped');
+                    
+                    anelem = document.getElementById('cnt' + archive.name + 2);
+                    anelem.classList.remove('progress-bar-animated');
+                    anelem.classList.remove('progress-bar-striped');
+                    //readybarwidth = parseFloat(anelem.style.width.slice(0,-1))-part*100;
+                    readybar.style.width = '0%';
+
+                    anelem = document.getElementById('cnt' + archive.name + 3);
+                    anelem.classList.remove('progress-bar-animated');
+                    anelem.classList.remove('progress-bar-striped');
+
+                    anelem = document.getElementById(archive.name + "_button");
+                    anelem.classList.remove('btn-info');
+                    anelem.classList.remove('btn-warning');
+                    anelem.classList.add('btn-success');
+                }
+                else {
+                    ingestneuron(archive,icount+1);
+                    
+                }   
+            }
+        })
+    }
+    else {
+        ingestneuron(archive,icount+1);
+    }    
+}
+
+function ingestwrap(neuron_name,archive_name) {
+    notFound = true;
+    var anarchive; 
+    ix = -1;
+    while (notFound) {
+        ix++
+        notFound = activearchives[ix].name != archive_name;
+    }
+    archive = activearchives[ix]
+
+    part = 1 / archive.neurons.length;
     console.log('Ingesting neuron: ' + neuron_name);
     $.ajax({
         url: 'http://127.0.0.1:5000/ingestneuron/' + neuron_name,
@@ -175,74 +236,93 @@ function ingestneuron(neuron_name,archive,nData,nextid=-1) {
         },
         type: 'GET',
         success: function(result) {
-            console.log(result);
-            ingestcount++;
-            part = 1 / nData.length;
-            abutton = document.getElementById(neuron_name + "_button");
+            $("#inglog").innerHTML = 
+            abutton = document.getElementById(neuron_name+ "_button");
             abutton.classList.remove('btn-secondary');
             if (result.status == 'error') {
                 abutton.classList.add('btn-danger');
-                abar = document.getElementById('cnt' + archive + 5)
+
+                abar = document.getElementById('cnt' + archive.name + 2)
                 abarwidth = parseFloat(abar.style.width.slice(0,-1)) + part * 100;
                 abar.style.width = (abarwidth).toString() + '%';
-                          
             }
             else {
                 abutton.classList.add('btn-success');
-                abar = document.getElementById('cnt' + archive + 3)
+
+                abar = document.getElementById('cnt' + archive.name + 3)
                 abarwidth = parseFloat(abar.style.width.slice(0,-1)) + part * 100;
                 abar.style.width = (abarwidth).toString() + '%';
             }
-            readybar = document.getElementById('cnt' + archive + 2);
+            readybar = document.getElementById('cnt' + archive.name + 1);
             readybarwidth = parseFloat(readybar.style.width.slice(0,-1))-part * 100;
             readybar.style.width = (readybarwidth).toString() + '%';
+            
             abuttontext = document.getElementById(neuron_name + "_message") ; 
             abuttontext.innerHTML = result.message;
+
             neuronlink = document.getElementById(neuron_name + "_link") ;
             neuronlink.classList.remove('disabled');
-            console.log(Math.round(part))
-            if (Math.round(ingestcount*part*100) == 100) { 
-                anelem = document.getElementById('cnt' + archive + 2);
-                anelem.classList.remove('progress-bar-animated');
-                anelem.classList.remove('progress-bar-striped');
-                
-                anelem = document.getElementById('cnt' + archive + 3);
-                anelem.classList.remove('progress-bar-animated');
-                anelem.classList.remove('progress-bar-striped');
-                //readybarwidth = parseFloat(anelem.style.width.slice(0,-1))-part*100;
-                readybar.style.width = '0%';
 
-                anelem = document.getElementById('cnt' + archive + 5);
-                anelem.classList.remove('progress-bar-animated');
-                anelem.classList.remove('progress-bar-striped');
-            }
+            neuroningest = document.getElementById(neuron_name  + "_ingest") ;
+            neuroningest.classList.add('disabled');
             
-            if (nextid >= 0) {
-                ingestneuron(nData[nextid]["neuron_name"],archive,nData,nextid-1);
-            }
+            anelem = document.getElementById(archive.name + "_button");
+            anelem.classList.remove('btn-info');
+            anelem.classList.add('btn-warning');
+ 
         }
-    });
+    })
     
 }
-function ingestallneurons(archive,nData) {
-    ingestcount = 0;
+
+function ingestallneurons(archive_name) {
    // nData = dictArchiveNeuron["archive"];
-    ndlix = nData.length - 1;
-    anelem = document.getElementById(archive +'_ibutton');
+    notFound = true;
+    var anarchive; 
+    ix = -1;
+    while (notFound) {
+        ix++
+        notFound = activearchives[ix].name != archive_name;
+    }
+    anarchive = activearchives[ix]
+    
+    anelem = document.getElementById(archive_name +'_ibutton');
     anelem.classList.add('disabled');
     
-    anelem = document.getElementById('cnt' + archive + 2);
+    anelem = document.getElementById('cnt' + archive_name + 1);
     anelem.classList.add('progress-bar-animated');
     anelem.classList.add('progress-bar-striped');
-    anelem = document.getElementById('cnt' + archive + 3);
+    anelem = document.getElementById('cnt' + archive_name + 2);
     anelem.classList.add('progress-bar-animated');
     anelem.classList.add('progress-bar-striped');
-    anelem = document.getElementById('cnt' + archive + 5);
+    anelem = document.getElementById('cnt' + archive_name + 3);
     anelem.classList.add('progress-bar-animated');
     anelem.classList.add('progress-bar-striped');
-    ingestneuron(nData[ndlix]["neuron_name"],archive,nData,ndlix-1);
+    ingestneuron(anarchive,0);
+    
 
 }
+
+function revertallneurons(archive_name) {
+    $.ajax({
+		url: 'http://127.0.0.1:5000/revertarchive/' + archive_name,
+		error: function () {
+			console.log("Error!");
+		},
+		success: function (result) {
+            console.log(result)
+            activearchives = JSON.parse(getarchives()).data
+            document.querySelector("body > header").innerHTML = ""
+            document.querySelector("body > main").innerHTML = ""
+            
+            createArchivePanel(activearchives)
+            createDataPanel(activearchives)			
+		},
+		type: 'GET'
+    }); 
+    
+}
+
 
 function createDataPanel(archives){
     
@@ -274,6 +354,14 @@ function createDataPanel(archives){
         
  //       for (var index = 0; index < neuronData.length; index++) {
    //         if (index == 0){
+    
+        if (["error", "ingested", "ready"].includes(archive.status)) {
+            idisabled = 'disabled="true"'
+        }
+        else {
+            idisabled = ""
+        }
+        
         var elm = 
         `<div class="progress">
         <div id="cnt${archive.name + 1}" class="progress-bar " role="progressbar" style="width:${statarr[0]/total*100}%;  background-color:grey">Read</div>
@@ -283,9 +371,10 @@ function createDataPanel(archives){
         <div class="card">
         <div class="card-header">
         <a data-toggle="collapse" href="#collapse${archive.name}"  class="" aria-expanded="true">${archive.name}</a>
-        <h6>Link: <a href="http://cng.gmu.edu:8080/neuroMorphoDev/NeuroMorpho_ArchiveLinkout.jsp?ARCHIVE=${archive.name}&DATE=${archive.date}">to archive&gt;&gt;</a></h6> 
+        <h6>Link: <a target="_blank" href="${archive.link}">to archive&gt;&gt;</a></h6> 
         
-        <button id="${archive.name}_ibutton" class="btn btn-primary btn-sm" type="button" style="float:right;margin-top: -45px;" onclick="ingestallneurons('${archive.name}',dictArchiveNeuron['${archive.name}'])">Ingest Archive</button>
+        <button id="${archive.name}_ibutton" ${idisabled} class="btn btn-primary btn-sm" type="button" style="float:right; margin-top: -45px;" onclick="ingestallneurons('${archive.name}',dm)">Ingest Archive</button>
+        <button id="${archive.name}_rbutton" class="btn btn-primary btn-sm" type="button" style="float:right; margin-right: 120px; margin-top: -45px;" onclick="revertallneurons('${archive.name}',dm)">Revert Archive</button>
         </div>
         <div id="collapse${archive.name}" class="panel-collapse collapse" style="">
         <div class="card-body">
@@ -296,27 +385,35 @@ function createDataPanel(archives){
             switch (neuron.status) {
                 case 'read':
                     btnclass = 'btn-secondary'
+                    idisabled = "" 
+                    ldisabled = "disabled"
                     break;
                 case 'error':
                     btnclass = 'btn-danger'
+                    idisabled = ""
+                    ldisabled = "disabled"
                     break;
                 case 'ingested':
                     btnclass = 'btn-success'
+                    idisabled = "disabled"
+                    ldisabled = ""
                     break;
                 default:
                     btnclass = 'btn-secondary'
+                    idisabled = ""
+                    ldisabled = "disabled"
                     break;
             }
             elm += `
             <div class="btn-group">
-            <button id="${neuron.name}_button" type="button" class="btn ${btnclass} dropdown-toggle m-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">${neuron.name}</button>
+            <button id="${neuron.neuron_name}_button" type="button" class="btn ${btnclass} dropdown-toggle m-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">${neuron.neuron_name}</button>
             <div class="dropdown-menu p-4" style="max-width: 200px;">
-            <button class="dropdown-item" onclick="ingestneuron('${neuron.name}','${neuron.archive}')" type="button">Ingest neuron</button>
-            <a target="_blank" id="${neuron.name}_link" class="dropdown-item disabled" href="http://cng.gmu.edu:8080/neuroMorphoDev/neuron_info.jsp?neuron_name=${neuron.name}" >Neuron link </a>
+            <button id="${neuron.neuron_name}_ingest"  class="dropdown-item ${idisabled}" onclick="ingestwrap('${neuron.neuron_name}','${neuron.archive}')" type="button">Ingest neuron</button>
+            <a target="_blank" id="${neuron.neuron_name}_link" class="dropdown-item ${ldisabled}" href="http://cng.gmu.edu:8080/neuroMorphoDev/neuron_info.jsp?neuron_name=${neuron.neuron_name}" >Neuron link </a>
             <div class="dropdown-divider"></div>
             <h6 class="dropdown-header">Status</h6>
-            <p class="dropdown-item disabled" id="${neuron.name}_message">
-                Ready for ingestion.
+            <p class="dropdown-item disabled" id="${neuron.neuron_name}_message">
+                ${neuron.message}
             </p>
             </div>
             </div>
@@ -345,65 +442,9 @@ function getmessage(message) {
     
 }
 
-function sortOnKeys(dict) {
-
-    var sorted = [];
-    for(var key in dict) {
-        sorted[sorted.length] = key;
-    }
-    sorted.sort();
-
-    var tempDict = {};
-    for(var i = 0; i < sorted.length; i++) {
-        tempDict[sorted[i]] = dict[sorted[i]];
-    }
-
-    return tempDict;
-}
-
-function createArchiveNeuronDict(totalCount, ingestioData){
-    var dictArchiveNeuron = {};
-    for (var indexVal = 0; indexVal < ingestioData.length; indexVal++) {
-        if (dictArchiveNeuron[ingestioData[indexVal]["archive"]] === undefined){
-            dictArchiveNeuron[ingestioData[indexVal]["archive"]] = [ingestioData[indexVal]]
-        }
-        else{
-            dictArchiveNeuron[ingestioData[indexVal]["archive"]].push(ingestioData[indexVal])
-        }
-    }
-    
-    console.log("Archive Dictionary Check!")
-    console.log(dictArchiveNeuron)
-    return dictArchiveNeuron;
-}
-
-function createArchiveCountDict(totalCount, ingestioData){
-    var dictArchiveCount = {};
-
-    for (var indexVal = 0; indexVal < ingestioData.length; indexVal++) {
-        if (dictArchiveCount[ingestioData[indexVal]["archive"]] === undefined){
-            dictArchiveCount[ingestioData[indexVal]["archive"]] = {}
-            for(var ix = 0; ix < 6; ix++) {
-                dictArchiveCount[ingestioData[indexVal]["archive"]][ix] = 0
-            }
 
 
-            dictArchiveCount[ingestioData[indexVal]["archive"]][ingestioData[indexVal]["status"]] = 1
-        }
-        else{
-            if (dictArchiveCount[ingestioData[indexVal]["archive"]][ingestioData[indexVal]["status"]]  === undefined){
-                dictArchiveCount[ingestioData[indexVal]["archive"]][ingestioData[indexVal]["status"]] = 1
-            }
-            else {
-                dictArchiveCount[ingestioData[indexVal]["archive"]][ingestioData[indexVal]["status"]]++
-            }
-        }
-    }
-    
-    console.log("Archive Count Check!")
-    console.log(dictArchiveCount)
-    return dictArchiveCount;
-}
+
 
 function getIngest(status) {
     if (status == 2 || status == 5) {
@@ -450,38 +491,3 @@ $('#start_button').on('click', function () {
 
 
 
-
-function ingestarchive(archive_name) {
-    $(".loading").show();
-    console.log('Ingesting archive: ' + archive_name)
-    var payload = {};
-    payload['archive'] = archive_name;
-    payload['status'] = 0;
-    // $.ajax({
-    //     url: 'http://127.0.0.1:5000/ingestarchive',
-	// 	error: function () {
-	// 		console.log("Error!");
-	// 	},
-    //     type: 'POST',
-    //     contentType: 'application/json; charset=utf-8',
-    //     data: JSON.stringify(payload),
-    //     dataType: 'text',
-    //     success: function(result) {
-    //         console.log(result);
-    //     }
-    // });
-    $.ajax({
-        url: 'http://127.0.0.1:5000/setstatus/',
-		error: function () {
-			console.log("Error!");
-		},
-        type: 'POST',
-        contentType: 'application/json; charset=utf-8',
-        data: JSON.stringify(payload),
-        dataType: 'text',
-        success: function(result) {
-            console.log(result);
-        }
-    });
-    $(".loading").hide();
-}

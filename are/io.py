@@ -1,5 +1,6 @@
 from . import com
-from . import cfg     
+from . import cfg
+from . import gifgen     
 import shutil
 import paramiko
 import socket
@@ -56,7 +57,12 @@ def getfiles(archive):
      b) store on new server as data/archive/date(ISO)/filetypedir/file.xxx
      c) update status for each neuron in ingestion table as 'data imported (Ready)'"""
     result = {'status': 'success', 'message': 'Archive read succesfully'}
-    try:
+    #try:
+    ares = com.getarchiveingestionstatus(archive)
+    if ares:
+        result = ares
+    else:
+    
         srcpath = os.path.join(cfg.remotepath, archive + '_Final')
         dstpath = os.path.join(cfg.datapath, archive)
         srcmetapath = os.path.join(cfg.remotemetapath, archive)
@@ -65,11 +71,24 @@ def getfiles(archive):
         
         shutil.copytree(srcpath,dstpath)
         shutil.copytree(srcmetapath,dstmetapath)
+        lswcdir = os.path.join(cfg.datapath,archive,'CNG Version/')
+        lgifdir = os.path.join(cfg.datapath, archive,'rotatingImages/')
+        os.mkdir(lgifdir)
+        # commented out rightnow
+        #gifgen.gifgen(lswcdir,lgifdir)
         setready(dstpath,archive)
 
-    except Exception as identifier:
+    """ except Exception as identifier:
         result['status'] = 'error'
         result['message'] = str(identifier)
+        now = datetime.now()
+        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
+        com.insert('ingested_archives',{
+            'name': archive,
+            'date': dt_string,
+            'status': 'error',
+            'message': str(identifier)
+        }) """
     return result
 
 def passpath(pathname):
@@ -155,8 +174,9 @@ def setready(folderpath,archive):
             })
     com.insert('ingested_archives',{
         'name': archive,
-        'date': dt_string
-        'status': 'read'
+        'date': dt_string,
+        'status': 'read',
+        'message': 'Archive read succesfully'
     })
 
 def exportfiles(archivelist):
@@ -165,6 +185,49 @@ def exportfiles(archivelist):
     for archive in archivelist:
         measurementPath = os.path.join(cfg.local_data, archive + '_Final', "Measurements")
     
+def revertarchive(archive_name):
+    #try:
+    
+    neuronarr = com.getarchiveneurons(archive_name)
+    com.deleteingestedneurons(neuronarr)
+    com.deletearchive(archive_name)
+    
+    datadir = os.path.join(cfg.datapath,archive_name)
+    deleteallfiles(datadir)
+    os.rmdir(datadir)
+
+    metadir = os.path.join(cfg.metapath,archive_name)
+    deleteallfiles(metadir)
+    os.rmdir(metadir)
+    result = {'message': 'Archive deleted', "status": "success"}
+    #except Exception as e:
+    #    result = {'message': 'Error: {}'.format(str(e)), "status": "success"}
+    return result
+
+def deleteallfiles(folder):
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            raise Exception('Failed to delete %s. Reason: %s' % (file_path, e))
+    
+def importpvec(neuron_id,neuron_name,archive):
+    pvecpath = os.path.join(cfg.datapath,archive,"pvec",neuron_name + ".CNG.pvec")
+    with open(pvecpath) as pfile:
+        line1 = pfile.readline().split()
+        line2 = pfile.readline().split()
+    dpvec = {
+        "neuron_id": neuron_id,
+        "distance": line1[0],
+        "sfactor": line1[1],
+        "coeffs": "{{{}}}".format(",".join(line2))
+    }
+    com.insert("pvec",dpvec)
+
 
 def getarchivecsv():
     # fetch archives from csv
@@ -178,9 +241,16 @@ def getarchivecsv():
     for item in row:
         res = com.getarchiveneuronstatus(item)
         ares = com.getarchiveingestionstatus(item)
-        if not res:
-            archiverecord = {'name': item, "status": "ready", "link": "", "neurons": []}
+        if not ares:
+            archiverecord = {'name': item, "message": "Ready for reading", "status": "ready", "link": "", "neurons": []}
             ingestdate = datetime.now().date().strftime('%Y-%m-%d')
+        elif not res:
+            ingestdate = datetime.now().date().strftime('%Y-%m-%d')
+            archiverecord = {
+                'name': item, "status": ares["status"], 
+                "link": '',
+                "message": ares["message"], 
+                "neurons": []}
         else:
             # check all statuses
             statuses = [d["status"] for d in res]
@@ -200,10 +270,11 @@ def getarchivecsv():
             archiverecord = ({
                 'name': item,
                 'status': archivestatus,
+                'message': ares["message"],
                 'link': 'http://cng.gmu.edu:8080/neuroMorphoDev/NeuroMorpho_ArchiveLinkout.jsp?ARCHIVE={}&DATE={}'.format(item,adate),
                 'neurons': res
             })
-            
+        archives.append(archiverecord)   
     return archives
 
 
@@ -243,7 +314,7 @@ def exportneurons():
             oldid = 0
             status = 'error'
             message = str(e)
-        com.updateexportstatus(item['id'],oldid,status,message)
+        com.updateneuronstatus(item['name'],"ingested",message)
 
 def exportneuron(neuron_name):
     #try:
@@ -262,6 +333,7 @@ def exportneuron(neuron_name):
         'type': 'swc'
     })
     com.exportpublication(oldid,item['id'])
+    com.exportpvec(item["id"],oldid)
     transferneuronfiles(neuron_name)
     status = 'success'
     message = 'Neuron exported succesfully'
@@ -269,7 +341,7 @@ def exportneuron(neuron_name):
         oldid = 0
         status = 'error'
         message = str(e) """
-    com.updateexportstatus(item['id'],oldid,status,message)
+    com.updateneuronstatus(neuron_name,"ingested",message)
     return {
         'status': status,
         'message': message
@@ -288,6 +360,7 @@ def transferneuronfiles(neuron_name):
     remdir = datadir + 'Remaining issues/'
     stddir = datadir + 'Standardization log/'
     srcdir = datadir + 'Source-Version/'
+    gifdir = cfg.sshdir + 'rotatingImages/'
     imgdir = cfg.sshdir + 'images/imageFiles/' + archive + '/'
     checkdir(datadir)
     checkdir(swcdir)
@@ -299,7 +372,9 @@ def transferneuronfiles(neuron_name):
     lremdir = cfg.datapath + archive + '/Remaining issues/'
     lstddir = cfg.datapath + archive + '/Standardization log/'
     lsrcdir = cfg.datapath + archive + '/Source-Version/'
+    lgifdir = cfg.datapath + archive + '/rotatingImages/'
     limgdir = cfg.datapath + archive + '/Images/PNG/'
+
     sftp.put(lswcdir + neuron_name + '.CNG.swc',swcdir + neuron_name + '.CNG.swc')
     sftp.put(lremdir + neuron_name + '.CNG.swc.std',remdir + neuron_name + '.CNG.swc.std')
     sftp.put(lstddir + neuron_name + '.std',stddir + neuron_name + '.std')
@@ -307,6 +382,7 @@ def transferneuronfiles(neuron_name):
     filename, file_extension = os.path.splitext(sourcefile)
     sftp.put(sourcefile,srcdir + neuron_name + file_extension)
     sftp.put(limgdir + neuron_name + '.png',imgdir + neuron_name + '.png')
+    #sftp.put(lgifdir + neuron_name + '.CNG.gif',gifdir + neuron_name + '.CNG.gif')
         
 def mapneuronfields(pgdict):
     archdict = {'archive_name': pgdict['archive_name'], 
@@ -379,7 +455,14 @@ def fetchpmarticle(pmid):
     article  = record['PubmedArticle'][0]['MedlineCitation']['Article']
     result['article_title'] = com.escapechars(remove_html_tags(str(article['ArticleTitle'])))
     result['article_abstract'] = com.escapechars(remove_html_tags(str(article['Abstract']['AbstractText'][0])))
-    result['article_URL'] = 'https://pubmed.ncbi.nlm.nih.gov/{}/'.format(pmid)
+    result['article_URL'] = 'https://www.ncbi.nlm.nih.gov/pubmed/{}/'.format(pmid)
+    authors = record['PubmedArticle'][0]['MedlineCitation']['Article']['AuthorList']
+    nauthors = len(authors)
+    result["first_author"] = authors[0]['ForeName'] + " " + authors[0]['LastName']
+    result["last_author"] = authors[nauthors-1]['ForeName'] + " " + authors[nauthors-1]['LastName']
+    result["journal"] = record['PubmedArticle'][0]['MedlineCitation']['Article']['Journal']['Title']
+    result["doi"] = record['PubmedArticle'][0]['MedlineCitation']['Article']['ELocationID'][0].split("'")[0]
+    result["year"] = record['PubmedArticle'][0]['MedlineCitation']['Article']['ArticleDate'][0]['Year']
     return result
 
 
