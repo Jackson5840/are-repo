@@ -143,24 +143,19 @@ def ingestarchive(folder_name):
     counter =  0
     nneurons = len(readyneurons)
     result = {}
+
+    data = []
+
     for neuron in [item for item in readyneurons if item['status'] in ('warning','read','error')]:
         try:
             neuron_name = neuron['neuron_name']
             logging.info("neuron_name is {}".format(neuron_name))
             thismeta = neurontometa[neuron_name].copy()
-            logging.info("thismeta is {}".format(thismeta))
             (ndomains,morpho_attr) = neurondomains(neuron_name,thismeta)
+            logging.info("ndomains,morpho_attr {}".format(ndomains))
+            logging.info("ndomains,morpho_attr {}".format(morpho_attr))
+            data.append({'neuron_name': neuron_name, 'morpho_attr': morpho_attr})
 
-            neuron_id = ingestexecute(neuron_name,neurontomeas[neuron_name],thismeta,ndomains)
-            detmeas_ids = ingestdetailedmeas(neuron_name,neurontodetmeas)
-            
-            com.ingestdomain(neuron_id,ndomains,morpho_attr,detmeas_ids)
-            io.importpvec(neuron_id,neuron_name,folder_name)
-            io.exportneuron(neuron_name)
-            result[neuron_name] = {
-                'status': 'success',
-                'message': 'Successful ingestion'
-            }
         except Exception as e:
             result[neuron_name] = {
                 'status': 'error',
@@ -173,6 +168,8 @@ def ingestarchive(folder_name):
         #except Exception as e:
         #    result['status'] = 'error'
         #    com.setneuronerror(item,str(e))
+    df = pd.DataFrame(data)
+    df.to_excel(f'/home/bljungqu/diameter/{folder_name}.xlsx', index=False)
      
     return result
     
@@ -368,7 +365,6 @@ def neurondomains(neuron_name,neuronmeta):
     else:
         # No Diameter, 2D, Angles
         morpho_attr = 5
-    logging.info("Diameter is morpho_attr is {}".format(morpho_attr))
 
     #establish dictionary of domains detected
     domains = {'Soma': domaincount[1] > 0,
@@ -408,5 +404,5 @@ def neurondomains(neuron_name,neuronmeta):
                     integdict['AX'] = 'Incomplete'
         except KeyError as e:
             raise KeyError('Physical integrity element not in domains{}'.format(str(e)))
-    return (integdict,morpho_attr)
+    return (neuron_name,morpho_attr)
                 

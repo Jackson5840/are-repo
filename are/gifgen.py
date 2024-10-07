@@ -3,6 +3,10 @@ import imageio
 import math
 import time
 import os
+import redis
+from . import io
+import logging
+
 def rotate(img,angle):
 	img = img.rotate(angle)
 def findnextindex(dict, parentindex):
@@ -15,18 +19,25 @@ def findnextindex(dict, parentindex):
 	return returner
 #t= time.time() #initial time
 
-def gifgen(inputdirectoryPath,outputdirectoryPath):
-	pass
+def gifgen(inputdirectoryPath,outputdirectoryPath,archive):
+	r = redis.Redis(host='localhost', port=6379, db=0)
+	filename = "mo file read yet"
+	
 	try:
 		#inputdirectoryPath = "E:\\Krasnow\\gifgeneration\\input\\"
 		#save location
 		#pdfname = os.path.join(inputdirectoryPath, "front.png")
 		#swc file
 		#outputdirectoryPath = "E:\\Krasnow\\gifgeneration\\output"
+		nFiles = len(os.listdir(inputdirectoryPath))
+		fileix = 0
+		r.set("{}_gif_status".format(archive),'success')
+		r.set("{}_gif_progress".format(archive),fileix/nFiles*100)
 		for filename in os.listdir(inputdirectoryPath):
 			
 			textname = os.path.join(inputdirectoryPath, filename)
-			print(filename)
+			# logging.info('textname : {}'.format(textname))
+			#print(filename)
 			#DEFINITIONS OF COLORS
 			white = (255, 255, 255)
 			black = (0, 0, 0)
@@ -43,8 +54,15 @@ def gifgen(inputdirectoryPath,outputdirectoryPath):
 			linecount = 0 #later used for growing, ensuring we grow within 1 full rotation
 			#print("start")
 			f = open(textname, "r")
+			try: 
+				lines = f.readlines()
+			except UnicodeDecodeError as e:
+				f.close()
+				f = open(textname, "r", encoding='iso-8859-1')
+				lines = f.readlines()
 			dictionary = {} #KEY IS INTEGER INDEX OF LINE, VALUE IS [COORDINATES,radius,parent,color]
-			for line in f:
+			for line in lines:
+				line = line.replace('  ', ' ')
 				if(line[0]==' '):
 					line = line[1:]
 				if(line[0]!='#' and line[0]!='\n'): #STRIP ALL THE COMMENTS, STRIP EVERYTHING THAT ISN'T COORDINATES
@@ -58,16 +76,21 @@ def gifgen(inputdirectoryPath,outputdirectoryPath):
 			newdict[1]=dictionary[1]
 			#print(newdict[1])
 			order = findnextindex(dictionary,1)
+			#logging.info(order)
 			previouslen = 0
 			lenrightnow = len(order)
+			#logging.info('before while : {}'.format(lenrightnow))
 			while(len(order)<linecount-1):
 				for i in range(previouslen,lenrightnow):
-					order.extend(findnextindex(dictionary,order[i])) 
+					order.extend(findnextindex(dictionary,order[i]))
 				previouslen = lenrightnow
 				lenrightnow = len(order)
+				#logging.info('previouslen : {}'.format(previouslen))
+				#logging.info('now : {}'.format(lenrightnow))
 			neword = [1]
 			neword.extend(order)
 			order = neword
+
 			######################################################################
 			#
 			##THE NEXT CODE BIT IS TO DETERMINE THE MINIMUM AND MAXUMUM X, Y, AND Z VALUES SO THAT. WE CAN SCALE THE IMAGE TO THE FRAME, NO MATTER HOW BIG/SMALL THE NEURON IS.
@@ -159,6 +182,7 @@ def gifgen(inputdirectoryPath,outputdirectoryPath):
 			f.close()
 			##HERE WE MAKE A LIST OF THE JPG FILES TO LATER COMBINE INTO THE GIF.
 			filenameslist = []
+			#logging.info(filenameslist)
 			images = []
 			for i in range(360):
 				file =  os.path.join(inputdirectoryPath , "front"+str(i)+".png")
@@ -172,9 +196,18 @@ def gifgen(inputdirectoryPath,outputdirectoryPath):
 			#print(t1-t) #PRINT TOTAL TIME TAKEN
 			#print('done!')
 			#done.
+			#transfer gif
+			io.transfergif(filename.split(".")[0])
+			fileix += 1
+			r.set("{}_gif_status".format(archive),'success')
+			r.set("{}_gif_progress".format(archive),fileix/nFiles*100)
+			
 
-	except Exception as Exc:
-		print(Exc)
+	except Exception as e:
+		logging.exception('An error occurred during GIF generation of file %s: %s: %s' % (filename,e.__class__, e))
+		r = redis.Redis(host='localhost', port=6379, db=0)
+		r.set("{}_gif_status".format(archive),'error')
+		raise e
 
 	finally:
 		for delFile in os.listdir(inputdirectoryPath):

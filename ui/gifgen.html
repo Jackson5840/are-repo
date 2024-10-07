@@ -6,7 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="description" content="" />
         <meta name="author" content="" />
-        <title>Ingestion process overview - NeuroMorpho Admin</title>
+        <title>Gif generation overview - NeuroMorpho Admin</title>
         <link href="css/styles.css" rel="stylesheet" />
         <link href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css" rel="stylesheet" crossorigin="anonymous" />
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.png" />
@@ -129,14 +129,19 @@
                         <div class="container-fluid">
                             <div class="page-header-content">
                                 <h1 class="page-header-title">
-                                    <div class="page-header-icon"><i data-feather="activity"></i></div>
-                                    <span>Ingestion process overview</span>
+                                    <div class="page-header-icon"><i data-feather="camera"></i></div>
+                                    <span>Gif generation overview</span>
                                 </h1>
-                                <div class="page-header-subtitle">Archive and neuron status</div>
+                                <div class="page-header-subtitle">Status per archive</div>
                             </div>
                         </div>
                     </div>
-                    <div class="container-fluid mt-n10"><card class="archivecont"> </card><card class="container"></card></div>
+                    <div class="container-fluid mt-n10">
+                        <div class="card">
+                            <div class="card-header">Gif generation</div>
+                            <div class="card-body test1"></div>
+                        </div>
+                    </div>
                 </main>
                 <footer class="footer mt-auto footer-light">
                     <div class="container-fluid">
@@ -152,30 +157,9 @@
                 </footer>
             </div>
         </div>
-        <div class="modal hide fade" id="deleteneuronmodal" tabindex="-1" role="dialog">
-            <div class="modal-dialog" role="document">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title">Delete neuron?</h5>
-                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                  </button>
-                </div>
-                <div class="modal-body">
-                  <p>Delete neuron <b id="modalneuronname"></b>?</p>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" id="modalyes" class="btn btn-primary">Yes</button>
-                  <button type="button" class="btn btn-secondary" data-dismiss="modal">CNo</button>
-                </div>
-              </div>
-            </div>
-          </div>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
         <script src="js/scripts.js"></script>
-        <script src="js/main.js"></script>
-        <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js" crossorigin="anonymous"></script>
-        <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js" crossorigin="anonymous"></script>
+        <script src="js/gifgen.js"></script>
     </body>
 </html>

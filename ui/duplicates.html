@@ -5,14 +5,14 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="description" content="" />
-        <meta name="author" content="" />
-        <title>Ingestion process overview - NeuroMorpho Admin</title>
+        <meta name="author" content="Bengt Ljungquist" />
+        <title>Global duplicate detection - NeuroMorpho Admin</title>
         <link href="css/styles.css" rel="stylesheet" />
         <link href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css" rel="stylesheet" crossorigin="anonymous" />
         <link rel="icon" type="image/x-icon" href="assets/img/favicon.png" />
         <script data-search-pseudo-elements defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/js/all.min.js" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.24.1/feather.min.js" crossorigin="anonymous"></script>
-    </head>
+    </head> 
     <body class="nav-fixed">
         <nav class="topnav navbar navbar-expand shadow navbar-light bg-white" id="sidenavAccordion">
             <a class="navbar-brand d-none d-sm-block" href="index.html">NeuroMorpho Admin</a><button class="btn btn-icon btn-transparent-dark order-1 order-lg-0 mr-lg-2" id="sidebarToggle" href="#"><i data-feather="menu"></i></button>
@@ -129,14 +129,49 @@
                         <div class="container-fluid">
                             <div class="page-header-content">
                                 <h1 class="page-header-title">
-                                    <div class="page-header-icon"><i data-feather="activity"></i></div>
-                                    <span>Ingestion process overview</span>
+                                    <div class="page-header-icon"><i data-feather="filter"></i></div>
+                                    <span>Global duplicate detection</span>
                                 </h1>
-                                <div class="page-header-subtitle">Archive and neuron status</div>
+                                <div class="page-header-subtitle">Duplicates in all neurons</div>
                             </div>
                         </div>
                     </div>
-                    <div class="container-fluid mt-n10"><card class="archivecont"> </card><card class="container"></card></div>
+                    <div class="container-fluid mt-n10">
+                        <div class="card mb-4">
+                            <div class="card-header">Duplicates</div>
+                            <div class="card-body">
+                                <div class="datatable table-responsive">
+                                    <table class="table table-bordered table-hover" id="example" width="100%" cellspacing="0">
+                                        <thead>
+                                            <tr>
+                                                <th></th>
+                                                <th>Original name</th>
+                                                <th>Duplicate name</th>
+                                                <th>Archive</th>
+                                                <th>Version</th>
+                                                <th>Same src file</th>
+                                                <th>Similarity</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tfoot>
+                                            <tr>
+                                                <th></th>
+                                                <th>Original name</th>
+                                                <th>Duplicate name</th>
+                                                <th>Archive</th>
+                                                <th>Version</th>
+                                                <th>Same src file</th>
+                                                <th>Similarity</th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </main>
                 <footer class="footer mt-auto footer-light">
                     <div class="container-fluid">
@@ -152,30 +187,11 @@
                 </footer>
             </div>
         </div>
-        <div class="modal hide fade" id="deleteneuronmodal" tabindex="-1" role="dialog">
-            <div class="modal-dialog" role="document">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title">Delete neuron?</h5>
-                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                  </button>
-                </div>
-                <div class="modal-body">
-                  <p>Delete neuron <b id="modalneuronname"></b>?</p>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" id="modalyes" class="btn btn-primary">Yes</button>
-                  <button type="button" class="btn btn-secondary" data-dismiss="modal">CNo</button>
-                </div>
-              </div>
-            </div>
-          </div>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
         <script src="js/scripts.js"></script>
-        <script src="js/main.js"></script>
         <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js" crossorigin="anonymous"></script>
         <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js" crossorigin="anonymous"></script>
+        <script src="assets/js/duplicates.js"></script>
     </body>
 </html>
