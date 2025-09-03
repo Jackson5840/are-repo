@@ -146,9 +146,9 @@ def ingestarchive(folder_name):
     for neuron in [item for item in readyneurons if item['status'] in ('warning','read','error')]:
         try:
             neuron_name = neuron['neuron_name']
-            logging.info("neuron_name is {}".format(neuron_name))
+            #logging.info("neuron_name is {}".format(neuron_name))
             thismeta = neurontometa[neuron_name].copy()
-            logging.info("thismeta is {}".format(thismeta))
+            #logging.info("thismeta is {}".format(thismeta))
             (ndomains,morpho_attr) = neurondomains(neuron_name,thismeta)
 
             neuron_id = ingestexecute(neuron_name,neurontomeas[neuron_name],thismeta,ndomains)
@@ -308,6 +308,7 @@ def neurondomains(neuron_name,neuronmeta):
     minrad = 10000
     maxrad = -10000
     noDim = True
+    hasDim = False
     firstRead = True
     with open(filename) as fp: 
         lines = fp.readlines()
@@ -326,7 +327,7 @@ def neurondomains(neuron_name,neuronmeta):
                 if minrad > float(elems[4]):
                     minrad = float(elems[4])
 
-                #hasDim = hasDim or (int(elems[1]) != 1 and float(elems[5]) > 1)
+                hasDim = hasDim or (int(elems[1]) != 1 and float(elems[5]) > 1)
                 if int(elems[1]) != 1:
                     noDim = noDim and float(elems[5]) == prevradius
                     # logging.info("noDim is {}".format(noDim))
@@ -342,8 +343,9 @@ def neurondomains(neuron_name,neuronmeta):
     diaoverride = neuronmeta['diameter']  
     if isinstance(diaoverride,float): # is NaN
         # if it is null
-        hasDim = not noDim
+        # hasDim = not noDim
         # hasDim = False
+        pass
 
     elif diaoverride in ('TRUE','True'): # Overridden to True
         hasDim = True
@@ -368,7 +370,7 @@ def neurondomains(neuron_name,neuronmeta):
     else:
         # No Diameter, 2D, Angles
         morpho_attr = 5
-    logging.info("Diameter is morpho_attr is {}".format(morpho_attr))
+    # logging.info("Diameter is morpho_attr is {}".format(morpho_attr))
 
     #establish dictionary of domains detected
     domains = {'Soma': domaincount[1] > 0,

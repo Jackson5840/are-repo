@@ -133,7 +133,7 @@ def genwinjsp(archive):
         cfg.sshdir = cfg.sshreviewdir
         (version,nneurons) = io.genwinjsp(archive)
         io.writeendings(archive)
-        #io.updateinforev(archive,version,dt_string)
+        io.updateinforev(archive,version,dt_string)
         io.reviewworkflow()
         return {"status": "success"}
     except Exception as identifier:
@@ -232,7 +232,7 @@ def exporttomain(archive):
             "data" : "Archive {} exported".format(archive),
             "status": "success"
         }
-       #io.publishtweet(version,nneurons,archive)
+        #io.publishtweet(version,nneurons,archive)
     except Exception:
         logging.exception("Error during export to main site of archive {}".format(archive))
         results = {
@@ -284,4 +284,7 @@ def create_tweetc_customize():
 
     return jsonify({"message": "Tweet created successfully"}), 200
 
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
 

@@ -1,26 +1,29 @@
 import os 
 
-remotepath = '/home/datashare/NMOVersionReleases/NMOV8.7-ongoing/'
+remotepath = '/data/datashare/NMOVersionReleases/NMOV8.7-ongoing/'
+#remotepath = '/home/datashare/NMOVersionReleases/NMOV8.7-ongoing/ongoing/onging/'
+readyremotepath = '/data/datashare/NMOVersionReleases/NMOV8.7-ongoing/'
 #remotepath = '/run/user/1000/gvfs/smb-share:server=cngfile.orc.gmu.edu,share=nmofile/ToBackup/NMOVersionReleases/NMOV8.6-ongoing/'
 
 #datapath = '/mnt/cngfile/ToBackup/NMOVersionReleases/NMOV8.0-ongoing/'
-remotemetapath = '/home/datashare/NMOVersionReleases/NMOV8.7-metadata/'
+remotemetapath = '/data/datashare/NMOVersionReleases/NMOV8.7-metadata/'
+#remotemetapath = '/home/datashare/NMOVersionReleases/NMOV8.7-metadata/meta/metadata/'
 
 #metapath = '/mnt/cngfile/ToBackup/NMOVersionReleases/NMOV8.0-metadata/'
-datapath = '/data/nmo-are/archives/'
-metapath = '/data/nmo-are/metadata/'
-scrollpath = '/data/nmo-are/scrollimages/'
+datapath = '/data/datashare/nmo-are/archives/'
+metapath = '/data/datashare/nmo-are/metadata/'
+scrollpath = '/data/datashare/nmo-are/scrollimages/'
 
 # Definition file /home/bljungqu/are/readyarchives.csv
-readyarchives = os.path.join(remotepath,'readyarchive.csv')
+readyarchives = os.path.join(readyremotepath,'readyarchive.csv')
 #readyarchives = os.path.join('/home/bljungqu/are','readyarchives.csv')
 
 # MySQL config
 dbhost = 'localhost'
 dbuser = 'blxps'
 dbpass = '100%db'
-dbselrev = 'nmoDev'
-dbsel = 'nmoDev'
+dbselrev = 'nmdbDev'
+dbsel = 'nmdbDev'
 dbselmain = 'NeuMO'
 
 #SSH config
@@ -29,23 +32,25 @@ dbselmain = 'NeuMO'
 sshuser = 'bljungqu',
 sshkeyfile = '/home/bljungqu/.ssh/id_rsa'
 sshhost = 'cng.gmu.edu'
-sshdir = '/usr/share/tomcat/apache-tomcat-7.0.54/webapps/neuroMorphoDev/'
-sshmaindir = '/usr/share/tomcat/apache-tomcat-7.0.54/webapps/neuroMorphoDevMain/'
-sshreviewdir = '/usr/share/tomcat/apache-tomcat-7.0.54/webapps/neuroMorphoDev/'
+sshdir = '/data/app/tomcat/apache-tomcat-7.0.54/webapps/neuroMorphoReview/'
+sshmaindir = '/data/app/tomcat/apache-tomcat-7.0.54/webapps/neuroMorpho/'
+sshreviewdir = '/data/app/tomcat/apache-tomcat-7.0.54/webapps/neuroMorphoReview/'
 
 
 # Duplicate detection
 #duplicateurl = 'http://129.174.10.74/simDev/getDuplicates/'
 #duplicateinternalurl = 'http://129.174.10.74/simDev/getDuplicates/'
-duplicateinternalurl = 'http://100.28.253.215/similarity/getDuplicatesfordata/'
+duplicateinternalurl = 'https://neuromorpho.org/similarity/getDuplicatesfordata/'
 similaritylim = 0.999999
 pcalim = 0.9999
 
 # Web server to check files
-webserver = 'http://cng.gmu.edu:8080/neuroMorphoDev/'
+webserver = 'http://cngpro.gmu.edu:8080/neuroMorphoReview/'
 
 #URL to pvec generation
-pvecurl = 'http://100.28.253.215/swc2pvec/'
+#pvecurl = 'https://neuromorpho.org/swc2pvec/'
+#pvecurl = 'http://100.28.253.215/swc2pvec/'
+pvecurl = 'http://129.174.21.119/swc2pvec/'
 
 #Twitter keys
 

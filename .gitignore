@@ -1,0 +1,11 @@
+ui/assets/.DS_Store
+.venv
+__pycache__
+*.pyc
+.mypy_cache
+*.log
+.vscode
+redis-5.0.14
+redis-5.0.14.tar.gz
+.dockerignore
+

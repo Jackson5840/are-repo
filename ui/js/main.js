@@ -3,8 +3,8 @@ var loadcount
 var ingestcount
 var neur
 var dm
+//var serverbase = 'http://cngpro.gmu.edu:5000/'
 var serverbase = '../'
-
 
 $(document).ready(function() {
     activearchives = JSON.parse(getarchives());
@@ -113,11 +113,13 @@ function readarchive(archive_name) {
     $.ajax({
     url: serverbase + 'readarchive/' + archive_name,
     error: function () {
-        console.log("Error!");
+        console.log("Error!!!");
+        alert("Read error: UNKNOW ERROR.");
     },
     success: function (result) {
         console.log(result)
         if (result.status == 'error') {
+            alert("Read error: " + (result.message));
             abutton = document.getElementById(archive_name + "_button")
             abutton.classList.remove('btn-secondary')
             abutton.classList.add('btn-danger')
@@ -147,6 +149,8 @@ function readarchive(archive_name) {
     type: 'GET'
     }); 
 }
+
+
 
 
 
@@ -470,6 +474,7 @@ function deleteneuron(neuronname,archive) {
 			console.log("Error!");
 		},
 		success: function (result) {
+            console.log("Error!");
             console.log(result)
             
             var elem = document.getElementById(neuronname + '_button');
@@ -483,7 +488,7 @@ function deleteneuron(neuronname,archive) {
 
 function tweetneuron(neuronname,archive) {
     $.ajax({
-		url: serverbase + 'tweetneuron/' + neuronname + '/' + archive,
+		url: serverbase + 'tweetneuron/' + neuronname + '/' + archive + '/',
 		error: function () {
 			console.log("Error!");
             alert('Tweet error.');

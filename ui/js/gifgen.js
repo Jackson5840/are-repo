@@ -1,5 +1,6 @@
-var serverbase = 'https://neuromorpho.org/ingestapi/';
-
+//var serverbase = 'https://neuronmorpho.org/ingestapi/';
+//var serverbase = 'http://cngpro.gmu.edu:5000/';
+var serverbase = '../'
 
 $(document).ready(function() {
     getarchives()

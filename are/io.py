@@ -20,7 +20,69 @@ islocal = True
 if not islocal:
     import paramiko
 
-def updateinforev(foldername,version,dt_string):
+#update main local only
+def updateinfo(foldername, version, dt_string):
+    archive = namefromfolder(foldername)
+    table = 'pubversion'
+    nneurons = com.countneurons()
+    (neuronlist, neuronids) = com.getarchiveneurons(archive)
+    ninarchive = len(neuronlist)
+
+    dirpath = cfg.sshdir
+    winpath = dirpath + 'Header.jsp'
+
+    with open(winpath, 'r+') as filehandle:
+        lines = filehandle.readlines()
+
+
+        for i, line in enumerate(lines):
+            if "<!-- START INFO -->" in line:
+
+                infoline = "{}.{}.{} - Released: {} - Content: {} cells </font></td>\n".format(
+                    version['major'],version['minor'], version['patch'], dt_string, nneurons
+                )
+
+                lines[i + 1] = infoline
+                break
+
+        filehandle.seek(0)
+        filehandle.writelines(lines)
+        filehandle.truncate()
+
+
+
+
+#update rev local only
+def updateinforev(foldername, version, dt_string):
+    archive = namefromfolder(foldername)
+    nneurons = com.countneurons()
+    nneurons += 57
+    neuronlist, neuronids = com.getarchiveneurons(archive)
+
+    dirpath = cfg.sshdir
+    winpath = dirpath + 'Header.jsp'
+
+    with open(winpath, 'r+') as filehandle:
+        lines = filehandle.readlines()
+
+
+        for i, line in enumerate(lines):
+            if "<!-- START INFO -->" in line:
+
+                infoline = "{}.{}.{} - Released: {} - Content: {} cells </font></td>\n".format(
+                    version['major'],version['minor'], version['patch'], dt_string, nneurons
+                )
+
+                lines[i + 1] = infoline
+                break
+
+        filehandle.seek(0)
+        filehandle.writelines(lines)
+        filehandle.truncate()
+
+
+# old update rev
+def updateinforev_old(foldername,version,dt_string):
     archive = namefromfolder(foldername)
     table = 'version'
     nneurons = com.countneurons()
@@ -292,7 +354,7 @@ def getfiles(foldername):
                 os.rename(cfg.datapath,foldername,'CNG version/',lswcdir)
             shutil.copytree(srcmetapath,dstmetapath)
             getsourcefiles(os.path.join(cfg.remotepath,foldername + '_Final','Source-Version/'),os.path.join(cfg.datapath,foldername,'Source-Version/'),dstmetapath,lswcdir,rstddir,lstddir)
-            prechecks(dstpath,dstmetapath,foldername)
+            #prechecks(dstpath,dstmetapath,foldername)
             
 
             #lgifdir = os.path.join(cfg.datapath, archive,'rotatingImages/')
@@ -1333,7 +1395,7 @@ def updatetickertape():
         sftp.sshclient.close()
 
 
-def updateinfo(foldername,version,dt_string):
+def updateinfo_old(foldername,version,dt_string):
     archive = namefromfolder(foldername)
     table = 'pubversion'
     nneurons= com.countneurons()
@@ -1568,15 +1630,14 @@ def checkduplicates(neuron_id):
 
 def transferneuronfiles(neuron_name):
     def checkdir(path):
-        try:
-            if islocal:
-                os.chdir(path)
-            else:
+        # Check if a directory exists, if not create it either local or remote
+        if islocal:
+            if not os.path.exists(path):
+                os.makedirs(path)
+        else:
+            try:
                 sftp.chdir(path)
-        except IOError as e:
-            if islocal:
-                os.mkdir(path)
-            else:
+            except IOError as e:
                 sftp.mkdir(path)
     foldername = com.getneuronfolder(neuron_name)
     archive = namefromfolder(foldername)
@@ -1621,6 +1682,7 @@ def transferneuronfiles(neuron_name):
         sftp.put(lswcdir + neuron_name + '.CNG.swc',swcdir + neuron_name + '.CNG.swc')
         sftp.put(lremdir + neuron_name + '.CNG.swc.std',remdir + neuron_name + '.CNG.swc.std')
 
+    #logging.info("neuron_name = {} + {}".format(neuron_name,lsrcdir))
     sourcefile = glob.glob(lsrcdir + neuron_name + '.*')[0]
     #logging.info("sourcefile = {}".format(sourcefile))
     filename, file_extension = os.path.splitext(sourcefile)
@@ -1764,7 +1826,13 @@ def mapneuronfields(pgdict):
 
 def fetchpmarticle(pmid):
     Entrez.email = "bljungqu@gmu.edu"
-    handle = Entrez.efetch(db="pubmed", id=pmid, rettype="gb", retmode="xml") # or esearch, efetch, ...
+    try:
+        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="gb", retmode="xml") # or esearch, efetch, ...
+    except Exception as e:
+        # sleep for 10 seconds and try again
+        time.sleep(10)
+        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="gb", retmode="xml")
+
     record = Entrez.read(handle)
     handle.close()
     result = {}
@@ -1879,20 +1947,19 @@ def remove_html_tags(text):
     return re.sub(clean, '', text)
 
 def transferimages():
+    """
+    transfer images from pre-release to main release"""
 
     lsimgdir = cfg.scrollpath
     simgdir = cfg.sshmaindir + 'images/scrollingText/'
     sfiles = os.listdir(lsimgdir)
-    if not islocal:
+    if islocal:
+        for item in sfiles:
+            shutil.copyfile(lsimgdir + item,simgdir + item)
+    else:
         sftp = create_sftp_client(cfg.sshhost)
-    for item in sfiles:
-        if islocal:
-            if os.path.isfile(lsimgdir + item):
-                shutil.copy(lsimgdir + item,simgdir + item)
-        #logging.info("Putting file: {} ".format(item))
-        else:
+        for item in sfiles:
             sftp.put(lsimgdir + item,simgdir + item)
-    if not islocal:
         sftp.close()
         sftp.sshclient.close()
 
@@ -1901,6 +1968,13 @@ def mainrelease(foldername,dt_string):
     # check that archive has status "published"
     # sync arhives using rsync
     # import to mysql all records
+
+    def transferfolder(src,dest):
+        if not islocal:
+            stdin, stdout, stderr = sshc.exec_command('/bin/rsync -rup {} {}'.format(src,dest))
+        else:
+            subprocess.run(['/bin/rsync', '-rup', src, dest])
+
     archive = namefromfolder(foldername)
     print("Dt string in main release".format(dt_string))
     if not islocal:
@@ -1910,22 +1984,21 @@ def mainrelease(foldername,dt_string):
     destdir = cfg.sshmaindir + "dableFiles/{}/".format(archive.lower())
     logging.info("main release {} *** {}".format(srcdir,destdir))
     logging.info("archive name = {} *** foldername = {} ".format(archive, foldername))
-    stdin, stdout, stderr = sshc.exec_command('rsync --links -rupv {} {}'.format(srcdir,destdir))
+    transferfolder(srcdir,destdir)
+   
     srcdir = cfg.sshdir + "images/imageFiles/{}/".format(archive)
     destdir = cfg.sshmaindir + "images/imageFiles/{}/".format(archive)
     logging.info("main release {} *** {}".format(srcdir,destdir))
-    stdin, stdout, stderr = sshc.exec_command('rsync -rup {} {}'.format(srcdir,destdir))
+    transferfolder(srcdir,destdir)
+
     srcdir = cfg.sshdir + "rotatingImages/"
     destdir = cfg.sshmaindir + "rotatingImages/"
     logging.info("main release {} *** {}".format(srcdir,destdir))
-    stdin, stdout, stderr = sshc.exec_command('rsync -rup {} {}'.format(srcdir,destdir))
+    transferfolder(srcdir,destdir)
+    
     srcfile = cfg.sshdir + "acknowl.jsp"
     destfile = cfg.sshmaindir + "acknowl.jsp"
-    if not islocal:
-        stdin, stdout, stderr = sshc.exec_command('sudo rsync -rup {} {}'.format(srcfile,destfile))
-    else:
-        # run rsync command locally
-        subprocess.run(['rsync', '-rup', srcfile, destfile])
+    # transferfolder(srcfile,destfile)
     
     neuron_names = exporttomain(foldername)
     archivestatus = com.getarchiveingestionstatus(foldername)
@@ -2130,10 +2203,13 @@ def embedded_tweet(tweet_url):
         return None
 
 
-def tweet_index_embed(embed_code):
+'''
+    old for ssh only
+'''
+def tweet_index_embedss(embed_code):
     if not islocal:
         sftp = create_sftp_client(cfg.sshhost)
-        winpath = '/usr/share/tomcat/apache-tomcat-7.0.54/webapps/neuroMorpho/' + 'index.jsp'
+        winpath = '/data/app/tomcat/apache-tomcat-7.0.54/webapps/neuroMorpho/' + 'index.jsp'
         with sftp.file(winpath, 'r+') as sfile:
             lines = sfile.readlines()
             updated_lines = []
@@ -2160,6 +2236,26 @@ def tweet_index_embed(embed_code):
 
             file.seek(0)
             file.writelines(updated_lines)
+
+'''
+    for localhost
+'''
+def tweet_index_embed(embed_code):
+    winpath = '/data/app/tomcat/apache-tomcat-7.0.54/webapps/neuroMorpho/index.jsp'
+    embed_code
+    logging.info("embed_code: {}".format(embed_code))
+    with open(winpath, 'r+') as file:
+        lines = file.readlines()
+        updated_lines = []
+
+        for line in lines:
+            updated_lines.append(line)
+            if "<!-- START EMBED -->" in line:
+                updated_lines.append(embed_code + "\n")
+
+        file.seek(0)
+        file.writelines(updated_lines)
+
 
 
 

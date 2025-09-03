@@ -38,6 +38,7 @@ def writeimages(namesmsg = {},imgsize=(300,20),fntsize=12):
 
     W, H = imgsize
     fnt = ImageFont.truetype(font="fonts/verdanab.ttf",size=12)
+    os.makedirs(cfg.scrollpath,exist_ok=True)
     for item in namesmsg:
         animg = Image.new(mode="RGBA", size=imgsize)
         

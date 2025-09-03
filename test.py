@@ -1,7 +1,9 @@
+#test
 from flask import Flask,jsonify
 from are import com
 app = Flask(__name__)
 
+#test
 @app.route('/')
 def ingest():
     s= {'status': 'success'}

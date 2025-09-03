@@ -1,0 +1,35 @@
+   If `vi` is giving you issues, you can try using `nano`, which is often easier to use and does not have the same terminal-specific requirements:
+   ```bash
+   sudo nano /etc/yum.repos.d/city-fan.repo
+   ```
+
+3. **Redirect Output Properly:**
+   If `vi` must be used, try running it explicitly as an interactive command:
+   ```bash
+   sudo vi /etc/yum.repos.d/city-fan.repo </dev/tty >/dev/tty 2>&1
+   ```
+
+4. **Use `cat` and `echo` as an Alternative to Modify the File:**
+   If you’re still having trouble editing with `vi` or `nano`, you can directly disable the repository by modifying the file with a command like `sed`. First, ensure the file exists:
+   ```bash
+   sudo cat /etc/yum.repos.d/city-fan.repo
+   ```
+
+   Then, disable the repository by changing `enabled=1` to `enabled=0` using `sed`:
+   ```bash
+   sudo sed -i 's/enabled=1/enabled=0/' /etc/yum.repos.d/city-fan.repo
+   ```
+
+5. **Verify the Changes:**
+   After editing, verify that the file has been updated correctly:
+   ```bash
+   cat /etc/yum.repos.d/city-fan.repo
+   ```
+
+After these changes, you should be able to proceed with `yum clean all` and `yum update -y` without errors from the `CityFan` repository.
+
+
+
+
+:q
+
