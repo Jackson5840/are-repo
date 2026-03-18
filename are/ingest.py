@@ -31,6 +31,7 @@ def ingestexecute(neuron_name,neurontomeas,neurontometa,ndomains):
     meas_id = com.insert('measurements',neurontomeas)
     shrinkval_id = com.insert('shrinkagevalue',getshrinkage(neurontometa))
     regionid = com.ingestregion(neurontometa)
+    #logging.info("neurontometa is {}".format(neurontometa))
     celltypeid = com.ingestcelltype(neurontometa)
     neurontometa['uploaddate'] = str(date.today())
     neurontometa['has_soma'] = 'Soma' in ndomains.keys()
@@ -226,7 +227,16 @@ def mapneurontometa(archivename):
     # returns the neuron to metadata map
     neurontometa = {}
     grouptometa = readmetadata(archivename)
-    thismetapath = os.path.join(cfg.metapath,archivename,'CNG Version')
+    base_path = os.path.join(cfg.metapath,archivename)
+
+    # CAP issue for CNG Version folder
+    if os.path.exists(os.path.join(base_path, 'CNG Version')):
+        thismetapath = os.path.join(base_path, 'CNG Version')
+    elif os.path.exists(os.path.join(base_path, 'CNG version')):
+        thismetapath = os.path.join(base_path, 'CNG version')
+    else:
+        raise FileNotFoundError('CNG Version / CNG version not found')
+
     if len(grouptometa) == 1:
         
         neurons=os.listdir(thismetapath)

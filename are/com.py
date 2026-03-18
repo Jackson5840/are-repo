@@ -1086,7 +1086,6 @@ def ingestdomain(conn,neuron_id,domains,morph_attr,detmeas_ids):
         stmt = "INSERT INTO neuron_structure (neuron_id, completeness, domain,morph_attributes,measurements_id) VALUES ({},'{}','{}',{},{})".format(neuron_id,domains[key],key,morph_attr,detmeas_ids[key])
         cur.execute(stmt)
 
-
 @myconnect
 def checkindb(conn,table,indexfield, fields):
     for item in fields:
@@ -1128,8 +1127,8 @@ def ingestregion(adict):
 
     reg1 = adict.get('region1','')
     if reg1 == 'Not reported' or reg1 == '':
-        return 0
-        #raise Exception('Region 1 must have value')
+
+        raise Exception('Region 1 must have value')
     else:
         pgarr = "array['{}'".format(reg1.replace("'","''").strip())
         path = cleanstr(reg1)
@@ -1175,7 +1174,8 @@ def ingestcelltype(adict):
 
     reg1 = adict.get('class1','')
     if reg1 == 'Not reported' or reg1 == '':
-        raise Exception('class 1 must have value')
+        #raise Exception('class 1 must have value')
+        return 0
     else:
         pgarr = "array['{}'".format(reg1)
         path = cleanstr(reg1.replace("'","''").strip())

@@ -12,7 +12,7 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import mysql.connector
 import logging
-
+import paramiko
 # paramiko.util.log_to_file('paramiko.log', level='DEBUG')
 
 # use localhost flag to run on localhost
@@ -354,7 +354,7 @@ def getfiles(foldername):
                 os.rename(cfg.datapath,foldername,'CNG version/',lswcdir)
             shutil.copytree(srcmetapath,dstmetapath)
             getsourcefiles(os.path.join(cfg.remotepath,foldername + '_Final','Source-Version/'),os.path.join(cfg.datapath,foldername,'Source-Version/'),dstmetapath,lswcdir,rstddir,lstddir)
-            #prechecks(dstpath,dstmetapath,foldername)
+            prechecks(dstpath,dstmetapath,foldername)
             
 
             #lgifdir = os.path.join(cfg.datapath, archive,'rotatingImages/')
@@ -943,7 +943,10 @@ def readpvecmes(foldername):
     
     #interact with pvec calculation service
     pvecurl = cfg.pvecurl
+    logging.info('pvecurl: {}'.format(pvecurl))
+
     r = requests.get(pvecurl + 'clearpvecs')
+    logging.info('r: {}'.format(r))
     
     for item in swcfiles:
         files = {'file': open(os.path.join(swcpath,item),'rb')}
@@ -2238,7 +2241,7 @@ def tweet_index_embedss(embed_code):
             file.writelines(updated_lines)
 
 '''
-    for localhost
+    embed for localhost
 '''
 def tweet_index_embed(embed_code):
     winpath = '/data/app/tomcat/apache-tomcat-7.0.54/webapps/neuroMorpho/index.jsp'
@@ -2257,6 +2260,157 @@ def tweet_index_embed(embed_code):
         file.writelines(updated_lines)
 
 
+'''
+    delete embed for localhost
+'''
+def tweet_index_embed_remove():
+    winpath = '/data/app/tomcat/apache-tomcat-7.0.54/webapps/neuroMorpho/index.jsp'
+
+    with open(winpath, 'r+') as file:
+        lines = file.readlines()
+        updated_lines = []
+
+        for i, line in enumerate(lines):
+            if "<!-- EMBED END -->" in line:
+                logging.info("Found <!-- EMBED END --> at line {}".format(i))
+
+                if len(updated_lines) >= 4:
+                    logging.info("Removing 4 lines before <!-- EMBED END -->")
+                    updated_lines = updated_lines[:-4]
+            updated_lines.append(line)
+
+        file.seek(0)
+        file.writelines(updated_lines)
+        file.truncate()
+
+
+
+'''
+    transfer finished archive to cng server
+'''
+def ensure_remote_dir(sftp, remote_dir):
+    """
+    Ensure that the remote directory exists (create recursively if needed).
+    """
+    dirs = []
+    cur = remote_dir
+    while len(cur) > 1:
+        dirs.append(cur)
+        cur = os.path.dirname(cur)
+    dirs.append('/')  # root
+    dirs.reverse()
+    for d in dirs:
+        try:
+            sftp.stat(d)
+        except IOError:
+            try:
+                sftp.mkdir(d)
+            except Exception as e:
+                print(f"[warn] Failed to create remote dir {d}: {e}")
+
+
+def upload_dir(sftp, local_dir, remote_dir):
+    """
+    Recursively upload a local directory to the given remote directory.
+    """
+    local_dir = os.path.abspath(local_dir)
+    if not os.path.exists(local_dir):
+        raise FileNotFoundError(f"Local path not found: {local_dir}")
+
+    for root, dirs, files in os.walk(local_dir):
+        # Determine the corresponding remote directory
+        rel_path = os.path.relpath(root, local_dir)
+        if rel_path == '.':
+            target_remote_root = remote_dir
+        else:
+            target_remote_root = os.path.join(remote_dir, rel_path).replace('\\', '/')
+
+        ensure_remote_dir(sftp, target_remote_root)
+
+        for fname in files:
+            local_path = os.path.join(root, fname)
+            remote_path = target_remote_root + '/' + fname
+            try:
+                # Skip upload if file already exists with same size
+                try:
+                    rstat = sftp.stat(remote_path)
+                    if rstat.st_size == os.path.getsize(local_path):
+                        print(f"[skip] {local_path} -> {remote_path} (same size)")
+                        continue
+                except IOError:
+                    pass
+
+                print(f"[upload] {local_path} -> {remote_path}")
+                sftp.put(local_path, remote_path)
+
+                # Try to copy local file permissions
+                try:
+                    mode = os.stat(local_path).st_mode
+                    sftp.chmod(remote_path, stat.S_IMODE(mode))
+                except Exception:
+                    pass
+            except Exception as e:
+                print(f"[error] Failed to upload {local_path} -> {remote_path}: {e}")
+                traceback.print_exc()
+
+
+def transfertocng(neuronfolder):
+    host = 'cng.gmu.edu'
+    username = 'zli36'
+    password = 'zli1234'
+    remote_base = '/home/zli36/nmo-data'
+    port = 22
+    timeout = 30
+
+
+    # Directly define local paths
+    local_data = os.path.join("/data/datashare/nmo-are/archives", neuronfolder)
+    local_meta = os.path.join("/data/datashare/nmo-are/metadata", neuronfolder)
+
+    logging.info("local_data = %s", local_data)
+    logging.info("local_meta = %s", local_meta)
+
+    remote_target_data = os.path.join(remote_base, neuronfolder, 'data').replace('\\', '/')
+    remote_target_meta = os.path.join(remote_base, neuronfolder, 'meta').replace('\\', '/')
+
+    ssh = None
+    sftp = None
+    try:
+        print(f"Connecting to {host}:{port} as {username} ...")
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(hostname=host, port=port, username=username, password=password, timeout=timeout)
+        sftp = ssh.open_sftp()
+
+        ensure_remote_dir(sftp, remote_base)
+
+        print(f"Uploading data folder: {local_data} -> {remote_target_data}")
+        upload_dir(sftp, local_data, remote_target_data)
+
+        print(f"Uploading meta folder: {local_meta} -> {remote_target_meta}")
+        upload_dir(sftp, local_meta, remote_target_meta)
+
+        print("✅ Upload completed successfully.")
+        return True
+    except (paramiko.AuthenticationException, paramiko.SSHException, socket.error) as e:
+        print(f"[fatal] SSH/SFTP error: {e}")
+        traceback.print_exc()
+        return False
+    except Exception as e:
+        print(f"[fatal] Unexpected error: {e}")
+        traceback.print_exc()
+        return False
+    finally:
+        if sftp:
+            try:
+                sftp.close()
+            except Exception:
+                pass
+        if ssh:
+            try:
+                ssh.close()
+            except Exception:
+                pass
 
 
 

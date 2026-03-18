@@ -114,9 +114,11 @@ def deleteneurons():
 def archiveneurons():
     anarchive = request.get_json()
     neuronfolder = anarchive['name']
+    io.transfertocng(neuronfolder)
     for item in anarchive['neurons']:
         com.archiveneuron(item['neuron_name'])
     com.deleteingestedarchive(neuronfolder)
+    logging.info("archiveneurons = {}".format(neuronfolder))
     return {"status": "success"}
 
 
@@ -207,6 +209,7 @@ def tweetneurons(neuron_name,archive):
     tweet_url = "https://twitter.com/NeuroMorphoOrg/status/{}".format(tweet_id)
     embed_code = io.embedded_tweet(tweet_url)
     io.tweet_index_embed(embed_code)
+    io.tweet_index_embed_remove()
 
     return plural
 
@@ -253,6 +256,7 @@ def create_tweet():
     tweet_url = "https://twitter.com/NeuroMorphoOrg/status/{}".format(tweet_id)
     embed_code = io.embedded_tweet(tweet_url)
     io.tweet_index_embed(embed_code)
+    io.tweet_index_embed_remove()
 
     return jsonify({"message": "Tweet created successfully"}), 200
 
@@ -266,6 +270,7 @@ def create_tweets():
     tweet_url = "https://twitter.com/NeuroMorphoOrg/status/{}".format(tweet_id)
     embed_code = io.embedded_tweet(tweet_url)
     io.tweet_index_embed(embed_code)
+    io.tweet_index_embed_remove()
 
     return jsonify({"message": "Tweet created successfully"}), 200
 
@@ -281,6 +286,7 @@ def create_tweetc_customize():
     tweet_url = "https://twitter.com/NeuroMorphoOrg/status/{}".format(tweet_id)
     embed_code = io.embedded_tweet(tweet_url)
     io.tweet_index_embed(embed_code)
+    io.tweet_index_embed_remove()
 
     return jsonify({"message": "Tweet created successfully"}), 200
 

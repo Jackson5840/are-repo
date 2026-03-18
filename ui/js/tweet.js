@@ -1,4 +1,4 @@
-var serverbase = 'https://neuromorpho.org/ingestapi/';
+var serverbase = '../'
 function processTweetLink() {
         // obtain link
         const tweet_link = document.getElementById('tweet_link').value;

@@ -1,7 +1,7 @@
 /* Formatting function for row details - modify as you need */
 var table; 
 
-var baseurl = 'https://neuromorpho.org/ingestapi/';
+var baseurl = 'http://cngpro.gmu.edu:5000/'
 
 function format ( d ) {
     // `d` is the original data object for the row
@@ -99,7 +99,7 @@ $('#example').on('click', 'a.editor_remove', function (e) {
  
 $(document).ready(function() {
     table = $('#example').DataTable( {
-        "ajax": "../assets/ajax/duplicates2023.json",
+        "ajax": "ui/assets/ajax/duplicate2023.json",
         "columns": [
             {
                 "class":          'details-control',
