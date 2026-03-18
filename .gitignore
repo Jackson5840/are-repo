@@ -8,4 +8,5 @@ __pycache__
 redis-5.0.14
 redis-5.0.14.tar.gz
 .dockerignore
-
+ui/temp
+single_gif/
