@@ -1098,7 +1098,35 @@ def checkindb(conn,table,indexfield, fields):
     cur = conn.cursor()
     cur.execute("SELECT * from {} where {} = '{}'".format(table,indexfield,fields[indexfield]))
     res = cur.fetchone()
+    #logging.info("cur.fetchone: {}".format(res))
     return res
+
+def checkindb_in_db(table, indexfield, fields, database):
+    fields = dict(fields)
+    for k, v in fields.items():
+        if v is None:
+            fields[k] = 'Not reported'
+        elif isinstance(v, (float, int)):
+            fields[k] = str(v)
+
+    # Connect to the database
+    conn = mysc.connect(
+        user=cfg.dbuser,
+        password=cfg.dbpass,
+        host=cfg.dbhost,
+        database=database
+    )
+    conn.autocommit = True
+
+    try:
+        cur = conn.cursor()
+        # Use parameterized query to avoid SQL injection
+        query = f"SELECT * FROM {table} WHERE {indexfield} = %s"
+        cur.execute(query, (fields[indexfield],))
+        res = cur.fetchone()
+        return res
+    finally:
+        conn.close()
 
 
 @myconnect

@@ -49,8 +49,8 @@ webserver = 'http://cngpro.gmu.edu:8080/neuroMorphoReview/'
 
 #URL to pvec generation
 #pvecurl = 'https://neuromorpho.org/swc2pvec/'
-pvecurl = 'http://100.28.253.215/swc2pvec/'
-#pvecurl = 'http://129.174.21.119/swc2pvec/'
+#pvecurl = 'http://100.28.253.215/swc2pvec/'
+pvecurl = 'http://129.174.21.119/swc2pvec/'
 
 #Twitter keys
 

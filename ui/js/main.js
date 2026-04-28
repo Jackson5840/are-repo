@@ -106,10 +106,53 @@ function readarchive(archive_name) {
 
     */
 
+    /*
+        reading status
+    */
+    const progressId = archive_name + '_read_progress';
+    const progressWrapId = archive_name + '_read_progress_wrap';
+    const progressTextId = archive_name + '_read_progress_text';
+
     $('#' + archive_name + '_button').prop('disabled', true)
     $('#' + archive_name + '_button').html(
         `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Reading archive...`
-    );  
+    );
+    /*
+        reading status
+    */
+    if (!document.getElementById(progressWrapId)) {
+        $('#' + archive_name + '_button').closest('.btn-group').after(`
+            <div id="${progressWrapId}" class="progress mt-2 mb-2" style="height: 20px;">
+                <div id="${progressId}" class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 0%">0%</div>
+            </div>
+            <div id="${progressTextId}" class="small text-muted mb-2">Starting archive read...</div>
+        `);
+    }
+    const poller = setInterval(function () {
+        $.ajax({
+            url: serverbase + 'checkreadarchive/' + archive_name,
+            type: 'GET',
+            success: function (presult) {
+                const progress = Math.max(0, Math.min(100, parseFloat(presult.progress || 0)));
+                $('#' + progressId).css('width', progress + '%').text(Math.round(progress) + '%');
+                $('#' + progressId).attr('aria-valuenow', progress);
+                $('#' + progressTextId).text(presult.message || 'Reading archive...');
+
+                if (presult.status === 'success' || presult.status === 'error') {
+                    clearInterval(poller);
+                    if (presult.status === 'success') {
+                        $('#' + progressId).removeClass('progress-bar-animated progress-bar-striped bg-info').addClass('bg-success');
+                        $('#' + progressTextId).text(presult.message || 'Archive read complete');
+                    } else {
+                        $('#' + progressId).removeClass('progress-bar-animated progress-bar-striped bg-info').addClass('bg-danger');
+                        $('#' + progressTextId).text(presult.message || 'Archive read failed');
+                    }
+                }
+            }
+        });
+    }, 1000);
+
+
     $.ajax({
     url: serverbase + 'readarchive/' + archive_name,
     error: function () {

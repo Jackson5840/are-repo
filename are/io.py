@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 import mysql.connector
 import logging
 import paramiko
+import redis
 # paramiko.util.log_to_file('paramiko.log', level='DEBUG')
 
 # use localhost flag to run on localhost
@@ -325,7 +326,20 @@ def getfiles(foldername):
      c) update status for each neuron in ingestion table as 'data imported (Ready)'"""
     archive = namefromfolder(foldername)
     result = {'status': 'success', 'message': 'Archive read successfully'}
+    #reading status
+    rr = redis.Redis(
+        host=os.getenv('REDIS_HOST', 'localhost'),
+        port=int(os.getenv('REDIS_PORT', '6379')),
+        db=int(os.getenv('REDIS_DB', '0')),
+    )
+    def set_read_progress(progress, message, status='running'):
+        rr.set(f"{archive}_read_progress", progress)
+        rr.set(f"{archive}_read_message", message)
+        rr.set(f"{archive}_read_status", status)
+
+    set_read_progress(5, 'Starting archive read')
     try:
+
         ares = com.getarchiveingestionstatus(foldername) #TODO must select subset of archive that has not been 
 
         if ares and ares["status"] in ['read','partial','ingested']:
@@ -342,20 +356,33 @@ def getfiles(foldername):
                 deleteallfiles(dstpath)
             if os.path.exists(dstmetapath):
                 deleteallfiles(dstmetapath)
+            #reading status
+            set_read_progress(15, 'Preparing destination folders')
             #add ignore pattern for scrcpath, ignoring source folder.
             ignorepattern =  shutil.ignore_patterns('Source-Version','Standardization log')
 
             shutil.copytree(srcpath,dstpath,ignore=ignorepattern)
-            
+            # reading status
+            set_read_progress(35, 'Copied archive files')
+
             lswcdir = os.path.join(cfg.datapath,foldername,'CNG Version/')
             rstddir = os.path.join(cfg.remotepath,foldername + '_Final','Standardization log/')
             lstddir = os.path.join(cfg.datapath,foldername,'Standardization log/')
             if not os.path.isdir(lswcdir):
                 os.rename(cfg.datapath,foldername,'CNG version/',lswcdir)
             shutil.copytree(srcmetapath,dstmetapath)
+
+            # reading status
+            set_read_progress(50, 'Copied metadata files')
             getsourcefiles(os.path.join(cfg.remotepath,foldername + '_Final','Source-Version/'),os.path.join(cfg.datapath,foldername,'Source-Version/'),dstmetapath,lswcdir,rstddir,lstddir)
+
+            # reading status
+            set_read_progress(65, 'Copied source files')
+
             prechecks(dstpath,dstmetapath,foldername)
-            
+
+            # reading status
+            set_read_progress(75, 'Finished prechecks')
 
             #lgifdir = os.path.join(cfg.datapath, archive,'rotatingImages/')
             #os.mkdir(lgifdir)
@@ -363,7 +390,13 @@ def getfiles(foldername):
             #gifgen.gifgen(lswcdir,lgifdir)
 
             data = readpvecmes(foldername)
+
+            # reading status
+            set_read_progress(85, 'Prepared morphology data')
+
             duplicateresult = checkduplicatesinternal(data,cfg.pcalim,cfg.similaritylim)
+
+
             #duplicateresult = 0
             if len(duplicateresult) > 0:
             #if duplicateresult > 0:
@@ -392,9 +425,12 @@ def getfiles(foldername):
                         'message': 'Duplicates detected',
                         'json': json.dumps(duplicateresult)
                     })
-
+            # reading status
+            set_read_progress(95, 'Finalizing archive status')
             setready(dstpath,archive,duplicateresult,foldername)
-            
+            # reading status
+            set_read_progress(100, 'Archive read complete', 'success')
+
     except Exception as identifier:
         identifier = com.cleanerr(str(identifier))
         result['status'] = 'error'
@@ -421,8 +457,10 @@ def getfiles(foldername):
                 'status': 'error',
                 'message': identifier
             })
+        #reading status
+        set_read_progress(100, identifier, 'error')
         logging.exception("Error during reading of files")
-        
+    logging.info('result：{}'.format(result))
     return result
 
 def genarchivegifs(foldername):
@@ -714,7 +752,9 @@ def prechecks(datapath,metapath,foldername=''):
     splitpath = datapath.split("/")
     archive = splitpath[len(splitpath)-1]
     for item in releasefilenames:
-        if com.checkindb("neuron","neuron_name",{"neuron_name": item}):
+        #if com.checkindb("neuron","neuron_name",{"neuron_name": item}):
+        if com.checkindb_in_db("neuron", "neuron_name", {"neuron_name": item}, cfg.dbselmain):
+            logging.info("in this check ")
             new_name = "{}_{}".format(archive,item)
             namedict[item] = new_name
             sourcefile = glob.glob("{}/{}.*".format(sourcepath, item))[0]
@@ -774,6 +814,7 @@ def citstr(astr):
 def setready(folderpath,archive,duplicateresult,foldername):
     """ Sets all neurons in the archive's path as ready for ingestion in db
     """
+
     neuronfolder = folderpath + '/CNG Version'
     archive = namefromfolder(foldername)
     neuronfiles = os    .listdir(neuronfolder)
@@ -1107,6 +1148,7 @@ def writeack(ackdict):
     Reads lines until line containing START ACK is found
     Parses Lab names of lines until alphetic order of 
     """
+
     lab = ackdict["acknowledgement"]
     if lab is not None and not isinstance(lab,float):
         if islocal:
@@ -2353,7 +2395,7 @@ def upload_dir(sftp, local_dir, remote_dir):
                 print(f"[error] Failed to upload {local_path} -> {remote_path}: {e}")
                 traceback.print_exc()
 
-
+#transfer files to cng
 def transfertocng(neuronfolder):
     host = 'cng.gmu.edu'
     username = 'zli36'

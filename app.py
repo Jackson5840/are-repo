@@ -96,6 +96,19 @@ def readarchive(archive):
     result = io.getfiles(archive)
     return result
 
+#reading status
+@app.route('/checkreadarchive/<string:archive>', methods=['GET'])
+def checkreadarchive(archive):
+    status = r.get(f"{archive}_read_status")
+    progress = r.get(f"{archive}_read_progress")
+    message = r.get(f"{archive}_read_message")
+
+    return {
+        'status': status.decode() if isinstance(status, bytes) else (status or 'idle'),
+        'progress': float(progress) if progress is not None else 0,
+        'message': message.decode() if isinstance(message, bytes) else (message or '')
+    }
+
 
 @app.route('/revertarchive/<string:archive>', methods=['GET'])
 def revertarchive(archive):
@@ -153,6 +166,7 @@ def ingestneuron(neuron_name):
 def ingestarchive(folder_name):
     cfg.sshdir = cfg.sshreviewdir
     neuronResults = ingest.ingestarchive(folder_name)
+    logging.info("check 1 {}".format(neuronResults))
     if any([neuronResults[item]['status'] == 'error' for item in neuronResults]):
         return {
             'data': ', '.join(['{}: {}'.format(item,neuronResults[item]['message']) for item in neuronResults if neuronResults[item]['status'] == 'error']),
@@ -289,6 +303,8 @@ def create_tweetc_customize():
     io.tweet_index_embed_remove()
 
     return jsonify({"message": "Tweet created successfully"}), 200
+
+
 
 
 if __name__ == '__main__':
