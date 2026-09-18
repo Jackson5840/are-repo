@@ -501,6 +501,35 @@ def filenames(adir,filefilters=[],excludefilters=[]):
             filelist  = list(filter(lambda x: (thisfilter in x[0]) , filelist))
     return filelist
 
+# std symlink check
+def _standardization_parent_names(stdfiles, stdpath, releaseset):
+    stdroot = os.path.realpath(stdpath)
+    release_names = {name.casefold() for name in releaseset}
+    parents = set()
+
+    for filename, directory in stdfiles:
+        filepath = os.path.join(directory, filename)
+        if not os.path.islink(filepath):
+            continue
+
+        child_name = os.path.splitext(filename)[0]
+        target = os.path.realpath(filepath)
+        try:
+            target_is_local = os.path.commonpath((stdroot, target)) == stdroot
+        except ValueError:
+            target_is_local = False
+
+        if not target_is_local or not os.path.isfile(target):
+            continue
+        if child_name.casefold() not in release_names:
+            continue
+
+        parent_name = os.path.splitext(os.path.basename(target))[0]
+        if parent_name != child_name:
+            parents.add(parent_name)
+
+    return parents
+
 def autopvecfix(pvecpath,pvecnotinrelease,notinpvec):
     toremove1 = []
     toremove2 = []
@@ -725,6 +754,10 @@ def prechecks(datapath,metapath,foldername=''):
     stdset = set(stdfilenames)
     stdset.discard('desktop') # disregard desktop.ini
     stdnotinrelease = stdset.difference(releaseset)
+    #std symlink check
+    stdnotinrelease.difference_update(
+        _standardization_parent_names(stdfiles, stdpath, releaseset)
+    )
     stdnotinrelease.discard('desktop') # disregard desktop.ini
     if bool(stdnotinrelease):
         raise FileNotFoundError('Files exist in std folder that are not in CNG Version  folder: {}'.format(str(stdnotinrelease)))

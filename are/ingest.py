@@ -139,8 +139,6 @@ def ingestarchive(folder_name):
     neurontometa = mapneurontometa(folder_name)
 
     (neurontomeas,neurontodetmeas) = mapneurontomeasurements(folder_name)
-    logging.info("neurontomeas is {}".format(neurontomeas))
-    logging.info("neurontodetmeas is {}".format(neurontodetmeas))
     archive_name = io.namefromfolder(folder_name)
     readyneurons = com.getfolderneuronstatus(archive_name) # TODO check if correct
     counter =  0
@@ -202,7 +200,6 @@ def readmetadata(archivename):
     # if only one group, assign dict values to dict with label 'default'
     filepath = os.path.join(cfg.metapath,archivename,archivename + '.csv')
     anmdf = pd.read_csv(filepath,header=0)
-    logging.info('anmdf：{}'.format(anmdf))
     (rows,cols) = anmdf.shape
     metadict = {}
     if cols > 2:
@@ -219,7 +216,6 @@ def readmetadata(archivename):
         for ix in range(rows):
             itemlabel = anmdf.iat[ix,0]
             metadict['default'][itemlabel] = anmdf.iat[ix,1]
-    logging.info('metadict：{}'.format(metadict))
     return metadict
 
 def mapneurontometa(archivename):
