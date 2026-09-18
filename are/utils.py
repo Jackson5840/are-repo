@@ -3,6 +3,7 @@ import glob
 from PIL import Image, ImageDraw,ImageFont
 import PIL
 import os,operator, sys
+import shlex
 from . import cfg,com,io
 import filecmp
 
@@ -216,7 +217,6 @@ def createsymlinks(target,sources,folder,server=""):
     """
     create symlinks to target neuron for all source neurons in a specified folder at the designated server (if provided, otherwise create locally).
     """
-    folder = folder.replace(' ','\ ')
     targetpath = os.path.join(folder,path_leaf(target))
     if server != "":
         sftp = io.create_sftp_client(server)
@@ -224,9 +224,21 @@ def createsymlinks(target,sources,folder,server=""):
     for item in sources[target]:
         itempath = os.path.join(folder,path_leaf(item))
         if server != "":
-            sshc.exec_command('ln -s {} {}'.format(targetpath,itempath))
+            targetarg = shlex.quote(targetpath)
+            itemarg = shlex.quote(itempath)
+            sshc.exec_command(
+                'if [ -L {item} ]; then rm {item}; fi; '
+                'if [ ! -e {item} ]; then ln -s {target} {item}; fi'.format(
+                    target=targetarg, item=itemarg
+                )
+            )
         else:
-            os.system('ln -s {} {}'.format(targetpath,itempath))
+            if os.path.islink(itempath):
+                os.unlink(itempath)
+            elif os.path.lexists(itempath):
+                logging.warning('Not replacing existing non-symlink file: %s', itempath)
+                continue
+            os.symlink(targetpath,itempath)
 
 def createmetachildren(sources,folder):
     """

@@ -16,6 +16,7 @@ import paramiko
 import redis
 # paramiko.util.log_to_file('paramiko.log', level='DEBUG')
 
+
 # use localhost flag to run on localhost
 islocal = True
 if not islocal:
@@ -281,12 +282,11 @@ def getsourcefiles(sourcepath,localsource,metafolder,swcfolder,stdpath,stdfolder
     4) Creates meta data children corresponding to symlinks
     """
     srcdup = utils.checkswctosource(sourcepath,swcfolder)
+    stddup = utils.checkswctosource(stdpath,swcfolder)
     utils.createmetachildren(srcdup,metafolder)
 
     shutil.copytree(sourcepath,localsource)
     shutil.copytree(stdpath,stdfolder)
-    stddup = {item.split('.')[0] + '.std': 
-        [elem.split('.')[0] + '.std' for elem in srcdup[item]] for item in srcdup.keys()}
     for item in srcdup:
         utils.createsymlinks(item,srcdup,localsource)
     for item in stddup:
@@ -2486,6 +2486,5 @@ def transfertocng(neuronfolder):
                 ssh.close()
             except Exception:
                 pass
-
 
 
