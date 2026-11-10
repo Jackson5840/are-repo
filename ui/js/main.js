@@ -529,22 +529,24 @@ function deleteneuron(neuronname,archive) {
     
 }
 
-function tweetneuron(neuronname,archive) {
+function postneuron(neuronname,archive) {
     $.ajax({
-		url: serverbase + 'tweetneuron/' + neuronname + '/' + archive + '/',
-		error: function () {
-			console.log("Error!");
-            alert('Tweet error.');
+		url: serverbase + 'postneuron/' + encodeURIComponent(neuronname) + '/' + encodeURIComponent(archive) + '/',
+		error: function (xhr) {
+            const message = xhr.responseJSON && xhr.responseJSON.message
+                ? xhr.responseJSON.message
+                : 'Unable to post neuron to Threads.';
+            alert('Threads post error: ' + message);
 		},
 		success: function (result) {
             console.log(result)
-            alert('Tweet successfully for ' + neuronname + " and embeded!");
+            alert('Posted ' + neuronname + ' to Threads successfully.');
             
-            var elem = document.getElementById(neuronname + '_tweet');
+            var elem = document.getElementById(neuronname + '_post');
             elem.className = "dropdown-item active";
             			
 		},
-		type: 'GET'
+		type: 'POST'
     }); 
     
 }
@@ -660,11 +662,11 @@ function createDataPanel(archives){
         </td>
         <td> Link: <a target="_blank" href="${archive.link}">to archive&gt;&gt;</a></td> 
         
-        <td><button id="${archive}button" type="button" class="btn btn-primary dropdown-toggle m-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Twitter <br/> neuron</button>
+        <td><button id="${archive}button" type="button" class="btn btn-primary dropdown-toggle m-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Post <br/> neuron</button>
         <div class="dropdown-menu p-4" style="white-space: normal; overflow: visible">`
        
         archive.neurons.forEach(neuron => {
-            elm +=`<button id="${neuron.neuron_name}_tweet" class="dropdown-item" onclick="tweetneuron('${neuron.neuron_name}','${neuron.archive}')" type="button">${neuron.neuron_name}</button>
+            elm +=`<button id="${neuron.neuron_name}_post" class="dropdown-item" onclick="postneuron('${neuron.neuron_name}','${neuron.archive}')" type="button">${neuron.neuron_name}</button>
             `;
         });
 

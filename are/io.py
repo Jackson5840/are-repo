@@ -2260,6 +2260,106 @@ def createtweetcustomize(tweet_link):
     return id
 
 
+def _threads_api_error(response, action):
+    """Build a safe, useful error from a Threads API response."""
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {}
+
+    error = payload.get('error', {}) if isinstance(payload, dict) else {}
+    message = error.get('message') or 'HTTP {}'.format(response.status_code)
+    error_code = error.get('code')
+    error_subcode = error.get('error_subcode')
+    codes = []
+    if error_code is not None:
+        codes.append('code {}'.format(error_code))
+    if error_subcode is not None:
+        codes.append('subcode {}'.format(error_subcode))
+    code_suffix = ' ({})'.format(', '.join(codes)) if codes else ''
+    return RuntimeError('Threads {} failed: {}{}'.format(action, message, code_suffix))
+
+
+def _check_threads_response(response, action):
+    if not response.ok:
+        raise _threads_api_error(response, action)
+
+
+def create_thread(message, image_url=None, alt_text=None):
+    """Publish a text or public-image post using the Meta Threads API."""
+    if not cfg.threads_user_id or not cfg.threads_access_token:
+        raise RuntimeError(
+            "Threads is not configured. Set THREADS_USER_ID and THREADS_ACCESS_TOKEN."
+        )
+
+    create_url = "{}/{}/threads".format(
+        cfg.threads_api_base_url, cfg.threads_user_id
+    )
+    create_data = {
+        'media_type': 'IMAGE' if image_url else 'TEXT',
+        'text': message,
+        'access_token': cfg.threads_access_token,
+    }
+    if image_url:
+        create_data['image_url'] = image_url
+        if alt_text:
+            create_data['alt_text'] = alt_text
+
+    create_response = requests.post(create_url, data=create_data, timeout=30)
+    _check_threads_response(create_response, 'container creation')
+    creation_id = create_response.json().get('id')
+    if not creation_id:
+        raise RuntimeError("Threads API did not return a creation ID.")
+
+    status_url = "{}/{}".format(cfg.threads_api_base_url, creation_id)
+    status_deadline = time.monotonic() + 30
+    while True:
+        status_response = requests.get(
+            status_url,
+            params={
+                'fields': 'status,error_message',
+                'access_token': cfg.threads_access_token,
+            },
+            timeout=30,
+        )
+        _check_threads_response(status_response, 'container status check')
+        status_payload = status_response.json()
+        container_status = str(status_payload.get('status', '')).upper()
+
+        if container_status == 'FINISHED':
+            break
+        if container_status in ('ERROR', 'EXPIRED'):
+            error_message = status_payload.get('error_message') or container_status
+            raise RuntimeError(
+                'Threads container processing failed: {}'.format(error_message)
+            )
+        if time.monotonic() >= status_deadline:
+            raise RuntimeError(
+                'Threads container was not ready after 30 seconds (status: {}).'.format(
+                    container_status or 'unknown'
+                )
+            )
+        time.sleep(1)
+
+    publish_url = "{}/{}/threads_publish".format(
+        cfg.threads_api_base_url, cfg.threads_user_id
+    )
+    publish_response = requests.post(
+        publish_url,
+        data={
+            'creation_id': creation_id,
+            'access_token': cfg.threads_access_token,
+        },
+        timeout=30,
+    )
+    _check_threads_response(publish_response, 'publish')
+    thread_id = publish_response.json().get('id')
+    if not thread_id:
+        raise RuntimeError("Threads API did not return a published post ID.")
+
+    return thread_id
+
+
 '''
     use tweet link to obtain 'Embedded Tweet'
 '''

@@ -228,6 +228,72 @@ def tweetneurons(neuron_name,archive):
     return plural
 
 
+@app.route('/postneuron/<string:neuron_name>/<string:archive>/', methods=['POST'])
+def postneuron(neuron_name, archive):
+    """Publish the selected neuron as a Meta Threads text post."""
+    try:
+        version = com.getcurrentversions('pubversion')
+        if version is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'No publication version is available.',
+            }), 409
+
+        neuronlist, _ = com.getarchiveneurons(archive)
+        nneurons = len(neuronlist)
+        plural = '' if nneurons == 1 else 's'
+        message = (
+            'New agile release of https://NeuroMorpho.Org available, '
+            'v{}.{}.{}, including {} novel reconstruction{} in the {} archive. '
+            'Selected neuron: {}. '
+            'https://neuromorpho.org/neuron_info.jsp?neuron_name={}'
+        ).format(
+            version['major'],
+            version['minor'],
+            version['patch'],
+            nneurons,
+            plural,
+            archive,
+            neuron_name,
+            requests.utils.quote(neuron_name, safe=''),
+        )
+
+        image_neuron_name = neuron_name
+        archive_prefix = '{}_'.format(archive)
+        if image_neuron_name.startswith(archive_prefix):
+            image_neuron_name = image_neuron_name[len(archive_prefix):]
+
+        image_url = '{}/{}/{}.png'.format(
+            cfg.threads_image_base_url,
+            requests.utils.quote(archive, safe=''),
+            requests.utils.quote(image_neuron_name, safe=''),
+        )
+        thread_id = io.create_thread(
+            message,
+            image_url=image_url,
+            alt_text='Neuron reconstruction {}'.format(neuron_name),
+        )
+        com.tweetneuron(neuron_name, archive)
+        return jsonify({
+            'status': 'success',
+            'message': 'Neuron posted to Threads successfully.',
+            'thread_id': thread_id,
+        }), 200
+    except RuntimeError as error:
+        logging.warning('Threads configuration error: %s', error)
+        return jsonify({'status': 'error', 'message': str(error)}), 503
+    except Exception:
+        logging.exception(
+            'Error posting neuron %s from archive %s to Threads',
+            neuron_name,
+            archive,
+        )
+        return jsonify({
+            'status': 'error',
+            'message': 'Unable to post neuron to Threads.',
+        }), 502
+
+
 
 @app.route('/exporttomain/<string:archive>',  methods=['GET'])
 def exporttomain(archive):
@@ -303,6 +369,44 @@ def create_tweetc_customize():
     io.tweet_index_embed_remove()
 
     return jsonify({"message": "Tweet created successfully"}), 200
+
+
+def create_thread_response(field_name, prefix=''):
+    data = request.get_json(silent=True) or {}
+    value = data.get(field_name)
+    if not isinstance(value, str) or not value.strip():
+        return jsonify({"message": "Thread content is required"}), 400
+
+    try:
+        thread_id = io.create_thread(prefix + value.strip())
+        return jsonify({
+            "message": "Thread created successfully",
+            "thread_id": thread_id,
+        }), 200
+    except RuntimeError as error:
+        logging.warning("Threads configuration error: %s", error)
+        return jsonify({"message": str(error)}), 503
+    except Exception:
+        logging.exception("Error creating Threads post")
+        return jsonify({"message": "Unable to create Threads post"}), 502
+
+
+@app.route('/create_thread', methods=['POST'])
+def create_thread_fixed():
+    return create_thread_response(
+        'thread_link',
+        'New report using reconstructions from NeuroMorpho.Org: ',
+    )
+
+
+@app.route('/create_threads', methods=['POST'])
+def create_threads_custom():
+    return create_thread_response('thread_text')
+
+
+@app.route('/create_thread_customize', methods=['POST'])
+def create_thread_customize():
+    return create_thread_response('thread_text_customize')
 
 
 

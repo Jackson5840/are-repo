@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <title>Threads Article - NeuroMorpho Admin</title>
+        <link href="css/styles.css" rel="stylesheet" />
+        <link rel="icon" type="image/x-icon" href="assets/img/favicon.png" />
+        <script data-search-pseudo-elements defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.27.0/feather.min.js" crossorigin="anonymous"></script>
+    </head>
+    <body class="nav-fixed">
+        <nav class="topnav navbar navbar-expand shadow navbar-light bg-white" id="sidenavAccordion">
+            <a class="navbar-brand" href="index.html">NeuroMorpho Admin</a>
+            <button class="btn btn-icon btn-transparent-dark order-1 order-lg-0 mr-lg-2" id="sidebarToggle" href="#"><i data-feather="menu"></i></button>
+        </nav>
+        <div id="layoutSidenav">
+            <div id="layoutSidenav_nav">
+                <nav class="sidenav shadow-right sidenav-light">
+                    <div class="sidenav-menu">
+                        <div class="nav accordion" id="accordionSidenav">
+                            <div class="sidenav-menu-heading">Start</div>
+                            <a class="nav-link" href="javascript:void(0);" data-toggle="collapse" data-target="#collapseDashboards" aria-expanded="true" aria-controls="collapseDashboards">
+                                <div class="nav-link-icon"><i data-feather="activity"></i></div>
+                                Dashboards
+                                <div class="sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                            </a>
+                            <div class="collapse show" id="collapseDashboards" data-parent="#accordionSidenav">
+                                <nav class="sidenav-menu-nested nav"><a class="nav-link" href="index.html">Ingestion process</a></nav>
+                                <nav class="sidenav-menu-nested nav"><a class="nav-link" href="gifgen.html">Gif generation</a></nav>
+                                <nav class="sidenav-menu-nested nav"><a class="nav-link" href="duplicates.html">Duplicate detection</a></nav>
+                                <nav class="sidenav-menu-nested nav"><a class="nav-link active" href="threads.html">Threads</a></nav>
+                            </div>
+                            <a class="nav-link collapsed" href="javascript:void(0);" data-toggle="collapse" data-target="#collapseLegacy" aria-expanded="false" aria-controls="collapseLegacy">
+                                <div class="nav-link-icon"><i data-feather="archive"></i></div>
+                                Legacy
+                                <div class="sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                            </a>
+                            <div class="collapse" id="collapseLegacy" data-parent="#accordionSidenav">
+                                <nav class="sidenav-menu-nested nav"><a class="nav-link" href="tweet.html">Tweet</a></nav>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+            <div id="layoutSidenav_content">
+                <main>
+                    <div class="page-header pb-10 page-header-dark bg-gradient-primary-to-secondary">
+                        <div class="container-fluid">
+                            <div class="page-header-content">
+                                <h1 class="page-header-title">
+                                    <div class="page-header-icon"><i data-feather="message-circle"></i></div>
+                                    <span>Threads Article</span>
+                                </h1>
+                                <div class="page-header-subtitle">Publish to Meta Threads</div>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="https://www.threads.net/" target="_blank" rel="noopener noreferrer">Go to Threads</a>
+                    <br /><br />
+                    <div class="container-fluid mt-n20">
+                        <div class="card">
+                            <div class="card-header">Threads Article (fixed)</div>
+                            <div class="card-body">
+                                <input type="text" class="form-control" id="thread_link" placeholder="New report using reconstructions from NeuroMorpho.Org:" />
+                                <br />
+                                <button class="btn btn-primary" onclick="processThreadLink()">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                    <br />
+                    <div class="container-fluid mt-n20">
+                        <div class="card">
+                            <div class="card-header">Threads Article (New Customize)</div>
+                            <div class="card-body">
+                                <input type="text" class="form-control" id="thread_text" placeholder="Post to Threads here" />
+                                <br />
+                                <button class="btn btn-primary" onclick="processThreadText()">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+                <footer class="footer mt-auto footer-light">
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col-md-6 small">Copyright &copy; NeuroMorpho.Org 2020</div>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js" crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+        <script src="js/scripts.js"></script>
+        <script src="js/threads.js"></script>
+    </body>
+</html>
