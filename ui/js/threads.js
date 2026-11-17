@@ -22,7 +22,13 @@ function submitThread(inputId, endpoint, fieldName, successMessage) {
         if (!response.ok) {
             throw new Error(result.message || 'Unable to create Threads post.');
         }
-        alert(successMessage + (result.thread_id ? ' ID: ' + result.thread_id : ''));
+        if (result.embed_status === 'failed') {
+            const reason = result.embed_error || 'Unknown homepage embed error.';
+            const postId = result.thread_id ? ' Post ID: ' + result.thread_id + '.' : '';
+            alert(successMessage + ' Embedding failed: ' + reason + postId + ' Do not submit it again.');
+        } else {
+            alert(successMessage + ' Embeded successfully.');
+        }
         input.value = '';
     })
     .catch(error => {
@@ -36,7 +42,7 @@ function processThreadLink() {
         'thread_link',
         '/create_thread',
         'thread_link',
-        'Threads article (fixed) created successfully.'
+        'Threads post created successfully.'
     );
 }
 
@@ -54,6 +60,6 @@ function processThreadCustomize() {
         'thread_text_customize',
         '/create_thread_customize',
         'thread_text_customize',
-        'Custom Threads post created successfully.'
+        'Threads post created successfully.'
     );
 }

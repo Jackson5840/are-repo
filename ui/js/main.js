@@ -540,7 +540,13 @@ function postneuron(neuronname,archive) {
 		},
 		success: function (result) {
             console.log(result)
-            alert('Posted ' + neuronname + ' to Threads successfully.');
+            if (result.embed_status === 'failed') {
+                const reason = result.embed_error || 'Unknown homepage embed error.';
+                const postId = result.thread_id ? ' Post ID: ' + result.thread_id + '.' : '';
+                alert('Posted ' + neuronname + ' to Threads successfully. Embedding failed: ' + reason + postId + ' Do not post it again.');
+            } else {
+                alert('Posted ' + neuronname + ' to Threads successfully. Embeded successfully.');
+            }
             
             var elem = document.getElementById(neuronname + '_post');
             elem.className = "dropdown-item active";

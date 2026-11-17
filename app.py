@@ -228,6 +228,21 @@ def tweetneurons(neuron_name,archive):
     return plural
 
 
+def thread_embed_failure_reason(error):
+    if isinstance(error, FileNotFoundError):
+        return 'Homepage index.jsp was not found: {}'.format(error.filename)
+    if isinstance(error, PermissionError):
+        return 'Flask cannot write to homepage index.jsp: {}'.format(error.filename)
+    if isinstance(error, requests.exceptions.Timeout):
+        return 'Threads API timed out while retrieving the embed.'
+    if isinstance(error, requests.exceptions.RequestException):
+        return 'Could not contact the Threads API while retrieving the embed.'
+    reason = str(error) or 'Unknown homepage embed error.'
+    if cfg.threads_access_token:
+        reason = reason.replace(cfg.threads_access_token, '[redacted]')
+    return reason
+
+
 @app.route('/postneuron/<string:neuron_name>/<string:archive>/', methods=['POST'])
 def postneuron(neuron_name, archive):
     """Publish the selected neuron as a Meta Threads text post."""
@@ -273,11 +288,26 @@ def postneuron(neuron_name, archive):
             image_url=image_url,
             alt_text='Neuron reconstruction {}'.format(neuron_name),
         )
-        com.tweetneuron(neuron_name, archive)
+        embed_status = 'updated'
+        embed_error = None
+        permalink = None
+        try:
+            permalink = io.embed_published_thread(thread_id)
+        except Exception as error:
+            embed_status = 'failed'
+            embed_error = thread_embed_failure_reason(error)
+            logging.exception('Threads post %s published but homepage embed failed', thread_id)
+        try:
+            com.tweetneuron(neuron_name, archive)
+        except Exception:
+            logging.exception('Threads post %s published but neuron status update failed', thread_id)
         return jsonify({
             'status': 'success',
             'message': 'Neuron posted to Threads successfully.',
             'thread_id': thread_id,
+            'permalink': permalink,
+            'embed_status': embed_status,
+            'embed_error': embed_error,
         }), 200
     except RuntimeError as error:
         logging.warning('Threads configuration error: %s', error)
@@ -379,9 +409,21 @@ def create_thread_response(field_name, prefix=''):
 
     try:
         thread_id = io.create_thread(prefix + value.strip())
+        embed_status = 'updated'
+        embed_error = None
+        permalink = None
+        try:
+            permalink = io.embed_published_thread(thread_id)
+        except Exception as error:
+            embed_status = 'failed'
+            embed_error = thread_embed_failure_reason(error)
+            logging.exception('Threads post %s published but homepage embed failed', thread_id)
         return jsonify({
             "message": "Thread created successfully",
             "thread_id": thread_id,
+            "permalink": permalink,
+            "embed_status": embed_status,
+            "embed_error": embed_error,
         }), 200
     except RuntimeError as error:
         logging.warning("Threads configuration error: %s", error)

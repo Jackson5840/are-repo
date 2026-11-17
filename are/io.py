@@ -1,10 +1,12 @@
 import subprocess
+import tempfile
 import twitter, validators, csv,logging,json,shutil,socket,os,glob,math,requests,re,time,filecmp,tweepy
 from . import com,cfg,gifgen,ingest,tasks,utils
 from stat import S_ISDIR
 from datetime import date,datetime
 from Bio import Entrez
 from pathlib import Path
+from urllib.parse import urlparse
 from crossref.restful import Works 
 from threading import Thread
 from xml.etree import ElementTree as ET
@@ -2358,6 +2360,88 @@ def create_thread(message, image_url=None, alt_text=None):
         raise RuntimeError("Threads API did not return a published post ID.")
 
     return thread_id
+
+
+def thread_permalink(thread_id):
+    """Read the canonical URL of a published Threads post."""
+    response = requests.get(
+        '{}/{}'.format(cfg.threads_api_base_url, thread_id),
+        params={'fields': 'permalink', 'access_token': cfg.threads_access_token},
+        timeout=30,
+    )
+    _check_threads_response(response, 'permalink lookup')
+    permalink = response.json().get('permalink')
+    if not permalink:
+        raise RuntimeError('Threads did not return a permalink for post {}.'.format(thread_id))
+    return permalink
+
+
+def embedded_thread(permalink):
+    """Get the official embed HTML for a public Threads post."""
+    response = requests.get(
+        'https://graph.threads.com/v1.0/oembed',
+        params={'url': permalink},
+        timeout=30,
+    )
+    _check_threads_response(response, 'oEmbed lookup')
+    embed_html = response.json().get('html')
+    if not embed_html:
+        raise RuntimeError('Threads oEmbed did not return HTML for {}.'.format(permalink))
+    return embed_html
+
+
+def thread_index_embed(embed_html, permalink):
+    """Put the latest Threads post at the top of the homepage embed section."""
+    configured_path = getattr(
+        cfg, 'threads_embed_index_path', os.path.join(cfg.sshmaindir, 'index.jsp')
+    )
+    index_path = os.path.abspath(configured_path)
+
+    with open(index_path, 'r', encoding='utf-8') as index_file:
+        content = index_file.read()
+
+    start_marker = '<!-- START EMBED -->'
+    end_marker = '<!-- EMBED END -->'
+    if content.count(start_marker) != 1 or content.count(end_marker) != 1:
+        raise RuntimeError('Homepage index.jsp must contain one Threads embed section.')
+    before, remainder = content.split(start_marker, 1)
+    section, after = remainder.split(end_marker, 1)
+    shortcode = urlparse(permalink).path.rstrip('/').rsplit('/', 1)[-1]
+    if shortcode and (
+        '/post/{}'.format(shortcode) in section
+        or '/t/{}'.format(shortcode) in section
+    ):
+        return index_path
+
+    # Each old X or new Threads embed has one blockquote and one script.
+    entries = re.findall(
+        r'<blockquote\b.*?</blockquote>\s*<script\b[^>]*>.*?</script>',
+        section,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    latest = [embed_html.strip()] + [entry.strip() for entry in entries[:6]]
+    updated = before + start_marker + '\n' + '\n\n'.join(latest) + '\n' + end_marker + after
+    original_mode = os.stat(index_path).st_mode & 0o777
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w', encoding='utf-8', dir=os.path.dirname(index_path),
+            prefix='.threads-index-', delete=False,
+        ) as index_file:
+            temp_path = index_file.name
+            index_file.write(updated)
+        os.chmod(temp_path, original_mode)
+        os.replace(temp_path, index_path)
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+    return index_path
+
+
+def embed_published_thread(thread_id):
+    permalink = thread_permalink(thread_id)
+    thread_index_embed(embedded_thread(permalink), permalink)
+    return permalink
 
 
 '''
